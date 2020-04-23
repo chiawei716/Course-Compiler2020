@@ -22,11 +22,13 @@ inumber {digit}+
 fnumber ({digit}*\.{digit}+)
 string \".*\"
 cpp_comment \/\/.*
-c_comment \/\*([^\*]|\*[^/])*\*+\/
+c_comment_head \/\*([^\*\n]|\*[^\/\n])*
+c_comment_inline ([^\*\n]|\*[^\/\n])*
+c_comment_end \*\/
 
 /* Rules section */
+%START MID_COMMENT LAST_COMMENT
 %%
-
 "+"         { printf("%-8s \t %s\n", yytext, "ADD"); }
 "-"         { printf("%-8s \t %s\n", yytext, "SUB"); }
 "*"			{ printf("%-8s \t %s\n", yytext, "MUL"); }
@@ -58,13 +60,6 @@ c_comment \/\*([^\*]|\*[^/])*\*+\/
 ";"			{ printf("%-8s \t %s\n", yytext, "SEMICOLON"); }
 ","			{ printf("%-8s \t %s\n", yytext, "COMMA"); }
 "\""		{ printf("%-8s \t %s\n", yytext, "QUOTA"); }
-\n			{ 
-				printf("%-8s \t %s\n", "", "NEWLINE"); line_num++;
-				if(in_comment){
-					comment_num++;
-					in_comment = false;
-				}
-			}
 
 "print"		{ printf("%-8s \t %s\n", yytext, "PRINT"); }
 "println"	{ printf("%-8s \t %s\n", yytext, "PRINTLN"); }
@@ -88,33 +83,21 @@ c_comment \/\*([^\*]|\*[^/])*\*+\/
 				printf("%-8s \t %s\n", "\"", "QUOTA"); 
 			}
 {id}		{ printf("%-8s \t %s\n", yytext, "IDENT"); }
-{cpp_comment} { printf("%-8s \t %s\n", yytext, "C++ Comment"); in_comment = true;}
-{c_comment}	{ 
-				char *str_start = yytext;
-				char *str_end = strchr(str_start, '\n');
-				while(str_end){
-					int str_len = str_end - str_start;
-					printf("%.*s\n", str_len, str_start);
-					printf("%-8s\t %s\n", "", "C Comment");
-					str_start = str_end + 1;
-					str_end = strchr(str_start, '\n');
-					line_num++;
-					comment_num++;
-				}
-				printf("%s       \t %s\n", str_start, "C Comment");
-				in_comment = true;
-			}
 
-<<EOF>>     { 
-				line_num++;
-				if(in_comment){
-					comment_num++;
-					in_comment = false;
-				}
-				yyterminate(); 
-			}
-" "			{;}
-\t			{;}
+<MID_COMMENT>\n	{ printf("%-8s \t %s\n", yytext, "C Comment"); line_num++; comment_num++;}
+<LAST_COMMENT>\n { printf("%-8s \t %s\n", "", "NEWLINE"); line_num++; comment_num++; BEGIN 0;}
+\n				{ printf("%-8s \t %s\n", "", "NEWLINE"); line_num++; }
+
+{cpp_comment} { printf("%-8s \t %s\n", yytext, "C++ Comment"); BEGIN LAST_COMMENT; }
+{c_comment_head} { ECHO; BEGIN MID_COMMENT; }
+<MID_COMMENT>{c_comment_inline} { ECHO; BEGIN MID_COMMENT; }
+<MID_COMMENT>{c_comment_end} { printf("%-8s \t %s\n", yytext, "C Comment"); BEGIN LAST_COMMENT; }
+
+<LAST_COMMENT><<EOF>> { line_num++; comment_num++; yyterminate(); }
+<<EOF>>     { line_num++; yyterminate(); }
+
+" "			|
+\t			|
 .           {;}
 
 %%

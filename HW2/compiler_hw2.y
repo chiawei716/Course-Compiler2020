@@ -24,7 +24,7 @@
     /* Symbol table function - you can add new function if needed. */
     static void create_symbol();
     static void insert_symbol();
-    static void lookup_symbol();
+    static char *lookup_symbol();
     static void dump_symbol();
 %}
 
@@ -37,7 +37,7 @@
     int i_val;
     float f_val;
     char *s_val;
-    bool b_val;
+    char *b_val;
 	char *type;
 	char *operation;
 }
@@ -61,7 +61,9 @@
 
 /* Nonterminal with return, which need to sepcify type */
 %type <type> Type TypeName ArrayType
-%type <operation> add_op mul_op binary_op unary_op
+%type <operation> add_op mul_op cmp_op binary_op unary_op
+%type <type> Expression SecExpr ThirdExpr ForthExpr FifthExpr
+%type <type> Literal Operand UnaryExpr PrimaryExpr
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -95,8 +97,8 @@ SimpleStmt
 ;
 
 PrintStmt
-	: PRINT '(' Expression ')'
-	| PRINTLN '(' Expression ')'
+	: PRINT '(' Expression ')' { printf("PRINT %s\n", $3); }
+	| PRINTLN '(' Expression ')' { printf("PRINTLN %s\n", $3); }
 ;
 
 ExpressionStmt : Expression ;
@@ -107,41 +109,73 @@ IncDecStmt
 ;
 
 Expression
-	: UnaryExpr
-	| Expression binary_op Expression { printf("%s\n", $2); }
+	: Expression LOR SecExpr { printf("LOR\n"); }
+	| SecExpr { $$ = "bool"; }
+;
+
+SecExpr
+	: SecExpr LAND ThirdExpr { printf("LAND\n"); }
+	| ThirdExpr { $$ = "bool"; }
+;
+
+ThirdExpr
+	: ThirdExpr cmp_op  ForthExpr { printf("%s\n", $2); }
+	| ForthExpr { $$ = $1; }
+;
+
+ForthExpr
+	: ForthExpr add_op FifthExpr { printf("%s\n", $2); }
+	| FifthExpr { $$ = $1; }
+;
+
+FifthExpr
+	: FifthExpr mul_op UnaryExpr { printf("%s\n", $2); }
+	| UnaryExpr { $$ = $1; }
 ;
 
 UnaryExpr
-	: PrimaryExpr
-	| unary_op UnaryExpr
+	: PrimaryExpr { $$ = $1; }
+	| unary_op UnaryExpr { printf("%s\n", $1); }
 ;
 
 PrimaryExpr
-	: Operand
+	: Operand { $$ = $1; }
 	| IndexExpr
 	| ConversionExpr
 ;
 
 Operand
 	: Literal
-	| IDENTIFIER { lookup_symbol($1); }
-	| '(' Expression ')'
+	| IDENTIFIER { $$ = lookup_symbol($1); }
+	| '(' Expression ')' { $$ = $2; }
 ;
 
 IndexExpr : PrimaryExpr '[' Expression ']' ;
 ConversionExpr : Type '(' Expression ')' ;
 
-Literal : INT_LIT | FLOAT_LIT | STRING_LIT | BOOL_LIT ;
-
-binary_op
-	: LAND 
-	| LOR 
-	| cmp_op
-	| add_op
-	| mul_op { $$ = $1; } 
+Literal
+	: INT_LIT 		{ printf("INT_LIT %d\n", $1); $$ = "int32"; }
+	| FLOAT_LIT 	{ printf("FLOAT_LIT %f\n", $1); $$ = "float32"; }
+	| STRING_LIT 	{ printf("STRING_LIT %s\n", $1); $$ = "string"; }
+	| BOOL_LIT		{ printf("%s\n", $1); $$ = "bool"; } 
 ;
 
-cmp_op		: EQL | NEQ | GEQ | LEQ | '>' | '<' ;
+binary_op
+	: mul_op { $$ = $1; }
+	| add_op { $$ = $1; } 
+	| cmp_op
+	| LAND
+	| LOR
+;
+
+cmp_op
+	: EQL	{ $$ = "EQL"; }
+	| NEQ 	{ $$ = "NEQ"; }
+	| GEQ 	{ $$ = "GEQ"; }
+	| LEQ 	{ $$ = "LEQ"; }
+	| '>' 	{ $$ = "GTR"; }
+	| '<' 	{ $$ = "LTR"; }
+;
 
 add_op
 	: '+' { $$ = "ADD"; }
@@ -161,7 +195,7 @@ unary_op
 ;
 
 Type
-	: TypeName
+	: TypeName { $$ = $1; }
 	| ArrayType
 ;
 
@@ -265,7 +299,7 @@ static void insert_symbol(char *id, char *type, char *element_type) {
     printf("> Insert {%s} into symbol table (scope level: %d)\n", id, scope);
 }
 
-static void lookup_symbol(char* id)
+static char* lookup_symbol(char* id)
 {
 	
 	struct Table *table = tables->head;
@@ -277,25 +311,26 @@ static void lookup_symbol(char* id)
 			if(strcmp(id, symbol->name) == 0)
 			{
 				printf("IDENT (name=%s, address=%d)\n", id, symbol->address);
-				return;
+				return symbol->name;
 			}
 			else
 				symbol = symbol->next;
 		}
 		table = table->next;
 	}
-	return;
+	return NULL;
 }
 
 static void dump_symbol() 
 {
 	struct Table *table = tables->head;
-	if(!table) return;
-
+	
 	// Print table info
-    printf("> Dump symbol table (scope level: %d)\n", table->scope);
+    printf("> Dump symbol table (scope level: %d)\n", table ? table->scope : 0);
     printf("%-10s%-10s%-10s%-10s%-10s%s\n",
            "Index", "Name", "Type", "Address", "Lineno", "Element type");
+	
+	if(!table) return;
 
 	// Print symbols
 	struct Symbol *symbol = table->head;

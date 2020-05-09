@@ -83,8 +83,8 @@ fnumber ({digit}*\.{digit}+)
 "float32"   { return FLOAT;}
 "string"    { return STRING; }
 "bool"      { return BOOL; }
-"true"      {;}
-"false"     {;}
+"true"      { yylval.b_val = strdup("TRUE"); return BOOL_LIT; }
+"false"     { yylval.b_val = strdup("FALSE"); return BOOL_LIT; }
 "var"       { return VAR; }
 
 {inumber}   { yylval.i_val = atoi(yytext); return INT_LIT; }

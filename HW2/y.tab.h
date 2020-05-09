@@ -111,7 +111,7 @@ typedef union YYSTYPE
     int i_val;
     float f_val;
     char *s_val;
-    bool b_val;
+    char *b_val;
 	char *type;
 	char *operation;
 }

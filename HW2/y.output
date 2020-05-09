@@ -1,3 +1,8 @@
+Useless nonterminals
+
+   binary_op
+
+
 Terminals which are not used
 
    ADD_ASSIGN
@@ -10,7 +15,13 @@ Terminals which are not used
    FOR
 
 
-State 75 conflicts: 13 shift/reduce
+Useless rules
+
+   61 binary_op: mul_op
+   62          | add_op
+   63          | cmp_op
+   64          | LAND
+   65          | LOR
 
 
 Grammar
@@ -40,109 +51,115 @@ Grammar
    14 IncDecStmt: Expression INC
    15           | Expression DEC
 
-   16 Expression: UnaryExpr
-   17           | Expression binary_op Expression
+   16 Expression: Expression LOR SecExpr
+   17           | SecExpr
 
-   18 UnaryExpr: PrimaryExpr
-   19          | unary_op UnaryExpr
+   18 SecExpr: SecExpr LAND ThirdExpr
+   19        | ThirdExpr
 
-   20 PrimaryExpr: Operand
-   21            | IndexExpr
-   22            | ConversionExpr
+   20 ThirdExpr: ThirdExpr cmp_op ForthExpr
+   21          | ForthExpr
 
-   23 Operand: Literal
-   24        | IDENTIFIER
-   25        | '(' Expression ')'
+   22 ForthExpr: ForthExpr add_op FifthExpr
+   23          | FifthExpr
 
-   26 IndexExpr: PrimaryExpr '[' Expression ']'
+   24 FifthExpr: FifthExpr mul_op UnaryExpr
+   25          | UnaryExpr
 
-   27 ConversionExpr: Type '(' Expression ')'
+   26 UnaryExpr: PrimaryExpr
+   27          | unary_op UnaryExpr
 
-   28 Literal: INT_LIT
-   29        | FLOAT_LIT
-   30        | STRING_LIT
-   31        | BOOL_LIT
+   28 PrimaryExpr: Operand
+   29            | IndexExpr
+   30            | ConversionExpr
 
-   32 binary_op: LAND
-   33          | LOR
-   34          | cmp_op
-   35          | add_op
-   36          | mul_op
+   31 Operand: Literal
+   32        | IDENTIFIER
+   33        | '(' Expression ')'
 
-   37 cmp_op: EQL
-   38       | NEQ
-   39       | GEQ
-   40       | LEQ
-   41       | '>'
-   42       | '<'
+   34 IndexExpr: PrimaryExpr '[' Expression ']'
 
-   43 add_op: '+'
-   44       | '-'
+   35 ConversionExpr: Type '(' Expression ')'
 
-   45 mul_op: '*'
-   46       | '/'
-   47       | '%'
+   36 Literal: INT_LIT
+   37        | FLOAT_LIT
+   38        | STRING_LIT
+   39        | BOOL_LIT
 
-   48 unary_op: '+'
-   49         | '-'
-   50         | '!'
+   40 cmp_op: EQL
+   41       | NEQ
+   42       | GEQ
+   43       | LEQ
+   44       | '>'
+   45       | '<'
 
-   51 Type: TypeName
-   52     | ArrayType
+   46 add_op: '+'
+   47       | '-'
 
-   53 TypeName: INT
-   54         | FLOAT
-   55         | STRING
-   56         | BOOL
+   48 mul_op: '*'
+   49       | '/'
+   50       | '%'
 
-   57 ArrayType: '[' ']' Type
+   51 unary_op: '+'
+   52         | '-'
+   53         | '!'
+
+   54 Type: TypeName
+   55     | ArrayType
+
+   56 TypeName: INT
+   57         | FLOAT
+   58         | STRING
+   59         | BOOL
+
+   60 ArrayType: '[' ']' Type
 
 
 Terminals, with rules where they appear
 
 $end (0) 0
-'!' (33) 50
-'%' (37) 47
-'(' (40) 11 12 25 27
-')' (41) 11 12 25 27
-'*' (42) 45
-'+' (43) 43 48
-'-' (45) 44 49
-'/' (47) 46
-'<' (60) 42
-'>' (62) 41
-'[' (91) 26 57
-']' (93) 26 57
+'!' (33) 53
+'%' (37) 50
+'(' (40) 11 12 33 35
+')' (41) 11 12 33 35
+'*' (42) 48
+'+' (43) 46 51
+'-' (45) 47 52
+'/' (47) 49
+'<' (60) 45
+'>' (62) 44
+'[' (91) 34 60
+']' (93) 34 60
 error (256)
 VAR (258) 8
-INT (259) 53
-FLOAT (260) 54
-BOOL (261) 56
-STRING (262) 55
+INT (259) 56
+FLOAT (260) 57
+BOOL (261) 59
+STRING (262) 58
 INC (263) 14
 DEC (264) 15
-GEQ (265) 39
-LEQ (266) 40
-EQL (267) 37
-NEQ (268) 38
+GEQ (265) 42
+LEQ (266) 43
+EQL (267) 40
+NEQ (268) 41
 ADD_ASSIGN (269)
 SUB_ASSIGN (270)
 MUL_ASSIGN (271)
 QUO_ASSIGN (272)
 REM_ASSIGN (273)
-LAND (274) 32
-LOR (275) 33
+LAND (274) 18
+LOR (275) 16
 NEWLINE (276) 4 5 6 7
 PRINT (277) 11
 PRINTLN (278) 12
 IF (279)
 ELSE (280)
 FOR (281)
-INT_LIT (282) 28
-FLOAT_LIT (283) 29
-STRING_LIT (284) 30
-IDENTIFIER (285) 8 24
-BOOL_LIT (286) 31
+INT_LIT (282) 36
+FLOAT_LIT (283) 37
+STRING_LIT (284) 38
+IDENTIFIER (285) 8 32
+BOOL_LIT (286) 39
 
 
 Nonterminals, with rules where they appear
@@ -166,35 +183,41 @@ ExpressionStmt (51)
 IncDecStmt (52)
     on left: 14 15, on right: 10
 Expression (53)
-    on left: 16 17, on right: 11 12 13 14 15 17 25 26 27
-UnaryExpr (54)
-    on left: 18 19, on right: 16 19
-PrimaryExpr (55)
-    on left: 20 21 22, on right: 18 26
-Operand (56)
-    on left: 23 24 25, on right: 20
-IndexExpr (57)
-    on left: 26, on right: 21
-ConversionExpr (58)
-    on left: 27, on right: 22
-Literal (59)
-    on left: 28 29 30 31, on right: 23
-binary_op (60)
-    on left: 32 33 34 35 36, on right: 17
-cmp_op (61)
-    on left: 37 38 39 40 41 42, on right: 34
-add_op (62)
-    on left: 43 44, on right: 35
-mul_op (63)
-    on left: 45 46 47, on right: 36
-unary_op (64)
-    on left: 48 49 50, on right: 19
-Type (65)
-    on left: 51 52, on right: 8 27 57
-TypeName (66)
-    on left: 53 54 55 56, on right: 51
-ArrayType (67)
-    on left: 57, on right: 52
+    on left: 16 17, on right: 11 12 13 14 15 16 33 34 35
+SecExpr (54)
+    on left: 18 19, on right: 16 17 18
+ThirdExpr (55)
+    on left: 20 21, on right: 18 19 20
+ForthExpr (56)
+    on left: 22 23, on right: 20 21 22
+FifthExpr (57)
+    on left: 24 25, on right: 22 23 24
+UnaryExpr (58)
+    on left: 26 27, on right: 24 25 27
+PrimaryExpr (59)
+    on left: 28 29 30, on right: 26 34
+Operand (60)
+    on left: 31 32 33, on right: 28
+IndexExpr (61)
+    on left: 34, on right: 29
+ConversionExpr (62)
+    on left: 35, on right: 30
+Literal (63)
+    on left: 36 37 38 39, on right: 31
+cmp_op (64)
+    on left: 40 41 42 43 44 45, on right: 20
+add_op (65)
+    on left: 46 47, on right: 22
+mul_op (66)
+    on left: 48 49 50, on right: 24
+unary_op (67)
+    on left: 51 52 53, on right: 27
+Type (68)
+    on left: 54 55, on right: 8 35 60
+TypeName (69)
+    on left: 56 57 58 59, on right: 54
+ArrayType (70)
+    on left: 60, on right: 55
 
 
 state 0
@@ -229,51 +252,55 @@ state 0
     ExpressionStmt   go to state 25
     IncDecStmt       go to state 26
     Expression       go to state 27
-    UnaryExpr        go to state 28
-    PrimaryExpr      go to state 29
-    Operand          go to state 30
-    IndexExpr        go to state 31
-    ConversionExpr   go to state 32
-    Literal          go to state 33
-    unary_op         go to state 34
-    Type             go to state 35
-    TypeName         go to state 36
-    ArrayType        go to state 37
+    SecExpr          go to state 28
+    ThirdExpr        go to state 29
+    ForthExpr        go to state 30
+    FifthExpr        go to state 31
+    UnaryExpr        go to state 32
+    PrimaryExpr      go to state 33
+    Operand          go to state 34
+    IndexExpr        go to state 35
+    ConversionExpr   go to state 36
+    Literal          go to state 37
+    unary_op         go to state 38
+    Type             go to state 39
+    TypeName         go to state 40
+    ArrayType        go to state 41
 
 
 state 1
 
     8 DeclarationStmt: VAR . IDENTIFIER Type
 
-    IDENTIFIER  shift, and go to state 38
+    IDENTIFIER  shift, and go to state 42
 
 
 state 2
 
-   53 TypeName: INT .
-
-    $default  reduce using rule 53 (TypeName)
-
-
-state 3
-
-   54 TypeName: FLOAT .
-
-    $default  reduce using rule 54 (TypeName)
-
-
-state 4
-
-   56 TypeName: BOOL .
+   56 TypeName: INT .
 
     $default  reduce using rule 56 (TypeName)
 
 
+state 3
+
+   57 TypeName: FLOAT .
+
+    $default  reduce using rule 57 (TypeName)
+
+
+state 4
+
+   59 TypeName: BOOL .
+
+    $default  reduce using rule 59 (TypeName)
+
+
 state 5
 
-   55 TypeName: STRING .
+   58 TypeName: STRING .
 
-    $default  reduce using rule 55 (TypeName)
+    $default  reduce using rule 58 (TypeName)
 
 
 state 6
@@ -287,54 +314,54 @@ state 7
 
    11 PrintStmt: PRINT . '(' Expression ')'
 
-    '('  shift, and go to state 39
+    '('  shift, and go to state 43
 
 
 state 8
 
    12 PrintStmt: PRINTLN . '(' Expression ')'
 
-    '('  shift, and go to state 40
+    '('  shift, and go to state 44
 
 
 state 9
 
-   28 Literal: INT_LIT .
+   36 Literal: INT_LIT .
 
-    $default  reduce using rule 28 (Literal)
+    $default  reduce using rule 36 (Literal)
 
 
 state 10
 
-   29 Literal: FLOAT_LIT .
+   37 Literal: FLOAT_LIT .
 
-    $default  reduce using rule 29 (Literal)
+    $default  reduce using rule 37 (Literal)
 
 
 state 11
 
-   30 Literal: STRING_LIT .
+   38 Literal: STRING_LIT .
 
-    $default  reduce using rule 30 (Literal)
+    $default  reduce using rule 38 (Literal)
 
 
 state 12
 
-   24 Operand: IDENTIFIER .
+   32 Operand: IDENTIFIER .
 
-    $default  reduce using rule 24 (Operand)
+    $default  reduce using rule 32 (Operand)
 
 
 state 13
 
-   31 Literal: BOOL_LIT .
+   39 Literal: BOOL_LIT .
 
-    $default  reduce using rule 31 (Literal)
+    $default  reduce using rule 39 (Literal)
 
 
 state 14
 
-   25 Operand: '(' . Expression ')'
+   33 Operand: '(' . Expression ')'
 
     INT         shift, and go to state 2
     FLOAT       shift, and go to state 3
@@ -351,52 +378,56 @@ state 14
     '-'         shift, and go to state 17
     '!'         shift, and go to state 18
 
-    Expression      go to state 41
-    UnaryExpr       go to state 28
-    PrimaryExpr     go to state 29
-    Operand         go to state 30
-    IndexExpr       go to state 31
-    ConversionExpr  go to state 32
-    Literal         go to state 33
-    unary_op        go to state 34
-    Type            go to state 35
-    TypeName        go to state 36
-    ArrayType       go to state 37
+    Expression      go to state 45
+    SecExpr         go to state 28
+    ThirdExpr       go to state 29
+    ForthExpr       go to state 30
+    FifthExpr       go to state 31
+    UnaryExpr       go to state 32
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
 
 
 state 15
 
-   57 ArrayType: '[' . ']' Type
+   60 ArrayType: '[' . ']' Type
 
-    ']'  shift, and go to state 42
+    ']'  shift, and go to state 46
 
 
 state 16
 
-   48 unary_op: '+' .
+   51 unary_op: '+' .
 
-    $default  reduce using rule 48 (unary_op)
+    $default  reduce using rule 51 (unary_op)
 
 
 state 17
 
-   49 unary_op: '-' .
+   52 unary_op: '-' .
 
-    $default  reduce using rule 49 (unary_op)
+    $default  reduce using rule 52 (unary_op)
 
 
 state 18
 
-   50 unary_op: '!' .
+   53 unary_op: '!' .
 
-    $default  reduce using rule 50 (unary_op)
+    $default  reduce using rule 53 (unary_op)
 
 
 state 19
 
     0 $accept: Program . $end
 
-    $end  shift, and go to state 43
+    $end  shift, and go to state 47
 
 
 state 20
@@ -425,23 +456,27 @@ state 20
 
     $default  reduce using rule 1 (Program)
 
-    Statement        go to state 44
+    Statement        go to state 48
     DeclarationStmt  go to state 22
     SimpleStmt       go to state 23
     PrintStmt        go to state 24
     ExpressionStmt   go to state 25
     IncDecStmt       go to state 26
     Expression       go to state 27
-    UnaryExpr        go to state 28
-    PrimaryExpr      go to state 29
-    Operand          go to state 30
-    IndexExpr        go to state 31
-    ConversionExpr   go to state 32
-    Literal          go to state 33
-    unary_op         go to state 34
-    Type             go to state 35
-    TypeName         go to state 36
-    ArrayType        go to state 37
+    SecExpr          go to state 28
+    ThirdExpr        go to state 29
+    ForthExpr        go to state 30
+    FifthExpr        go to state 31
+    UnaryExpr        go to state 32
+    PrimaryExpr      go to state 33
+    Operand          go to state 34
+    IndexExpr        go to state 35
+    ConversionExpr   go to state 36
+    Literal          go to state 37
+    unary_op         go to state 38
+    Type             go to state 39
+    TypeName         go to state 40
+    ArrayType        go to state 41
 
 
 state 21
@@ -455,21 +490,21 @@ state 22
 
     4 Statement: DeclarationStmt . NEWLINE
 
-    NEWLINE  shift, and go to state 45
+    NEWLINE  shift, and go to state 49
 
 
 state 23
 
     5 Statement: SimpleStmt . NEWLINE
 
-    NEWLINE  shift, and go to state 46
+    NEWLINE  shift, and go to state 50
 
 
 state 24
 
     6 Statement: PrintStmt . NEWLINE
 
-    NEWLINE  shift, and go to state 47
+    NEWLINE  shift, and go to state 51
 
 
 state 25
@@ -491,80 +526,117 @@ state 27
    13 ExpressionStmt: Expression .
    14 IncDecStmt: Expression . INC
    15           | Expression . DEC
-   17 Expression: Expression . binary_op Expression
+   16 Expression: Expression . LOR SecExpr
 
-    INC   shift, and go to state 48
-    DEC   shift, and go to state 49
-    GEQ   shift, and go to state 50
-    LEQ   shift, and go to state 51
-    EQL   shift, and go to state 52
-    NEQ   shift, and go to state 53
-    LAND  shift, and go to state 54
-    LOR   shift, and go to state 55
-    '>'   shift, and go to state 56
-    '<'   shift, and go to state 57
-    '+'   shift, and go to state 58
-    '-'   shift, and go to state 59
-    '*'   shift, and go to state 60
-    '/'   shift, and go to state 61
-    '%'   shift, and go to state 62
+    INC  shift, and go to state 52
+    DEC  shift, and go to state 53
+    LOR  shift, and go to state 54
 
     $default  reduce using rule 13 (ExpressionStmt)
-
-    binary_op  go to state 63
-    cmp_op     go to state 64
-    add_op     go to state 65
-    mul_op     go to state 66
 
 
 state 28
 
-   16 Expression: UnaryExpr .
+   17 Expression: SecExpr .
+   18 SecExpr: SecExpr . LAND ThirdExpr
 
-    $default  reduce using rule 16 (Expression)
+    LAND  shift, and go to state 55
+
+    $default  reduce using rule 17 (Expression)
 
 
 state 29
 
-   18 UnaryExpr: PrimaryExpr .
-   26 IndexExpr: PrimaryExpr . '[' Expression ']'
+   19 SecExpr: ThirdExpr .
+   20 ThirdExpr: ThirdExpr . cmp_op ForthExpr
 
-    '['  shift, and go to state 67
+    GEQ  shift, and go to state 56
+    LEQ  shift, and go to state 57
+    EQL  shift, and go to state 58
+    NEQ  shift, and go to state 59
+    '>'  shift, and go to state 60
+    '<'  shift, and go to state 61
 
-    $default  reduce using rule 18 (UnaryExpr)
+    $default  reduce using rule 19 (SecExpr)
+
+    cmp_op  go to state 62
 
 
 state 30
 
-   20 PrimaryExpr: Operand .
+   21 ThirdExpr: ForthExpr .
+   22 ForthExpr: ForthExpr . add_op FifthExpr
 
-    $default  reduce using rule 20 (PrimaryExpr)
+    '+'  shift, and go to state 63
+    '-'  shift, and go to state 64
+
+    $default  reduce using rule 21 (ThirdExpr)
+
+    add_op  go to state 65
 
 
 state 31
 
-   21 PrimaryExpr: IndexExpr .
+   23 ForthExpr: FifthExpr .
+   24 FifthExpr: FifthExpr . mul_op UnaryExpr
 
-    $default  reduce using rule 21 (PrimaryExpr)
+    '*'  shift, and go to state 66
+    '/'  shift, and go to state 67
+    '%'  shift, and go to state 68
+
+    $default  reduce using rule 23 (ForthExpr)
+
+    mul_op  go to state 69
 
 
 state 32
 
-   22 PrimaryExpr: ConversionExpr .
+   25 FifthExpr: UnaryExpr .
 
-    $default  reduce using rule 22 (PrimaryExpr)
+    $default  reduce using rule 25 (FifthExpr)
 
 
 state 33
 
-   23 Operand: Literal .
+   26 UnaryExpr: PrimaryExpr .
+   34 IndexExpr: PrimaryExpr . '[' Expression ']'
 
-    $default  reduce using rule 23 (Operand)
+    '['  shift, and go to state 70
+
+    $default  reduce using rule 26 (UnaryExpr)
 
 
 state 34
 
-   19 UnaryExpr: unary_op . UnaryExpr
+   28 PrimaryExpr: Operand .
+
+    $default  reduce using rule 28 (PrimaryExpr)
+
+
+state 35
+
+   29 PrimaryExpr: IndexExpr .
+
+    $default  reduce using rule 29 (PrimaryExpr)
+
+
+state 36
+
+   30 PrimaryExpr: ConversionExpr .
+
+    $default  reduce using rule 30 (PrimaryExpr)
+
+
+state 37
+
+   31 Operand: Literal .
+
+    $default  reduce using rule 31 (Operand)
+
+
+state 38
+
+   27 UnaryExpr: unary_op . UnaryExpr
 
     INT         shift, and go to state 2
     FLOAT       shift, and go to state 3
@@ -581,40 +653,40 @@ state 34
     '-'         shift, and go to state 17
     '!'         shift, and go to state 18
 
-    UnaryExpr       go to state 68
-    PrimaryExpr     go to state 29
-    Operand         go to state 30
-    IndexExpr       go to state 31
-    ConversionExpr  go to state 32
-    Literal         go to state 33
-    unary_op        go to state 34
-    Type            go to state 35
-    TypeName        go to state 36
-    ArrayType       go to state 37
+    UnaryExpr       go to state 71
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
 
 
-state 35
+state 39
 
-   27 ConversionExpr: Type . '(' Expression ')'
+   35 ConversionExpr: Type . '(' Expression ')'
 
-    '('  shift, and go to state 69
-
-
-state 36
-
-   51 Type: TypeName .
-
-    $default  reduce using rule 51 (Type)
+    '('  shift, and go to state 72
 
 
-state 37
+state 40
 
-   52 Type: ArrayType .
+   54 Type: TypeName .
 
-    $default  reduce using rule 52 (Type)
+    $default  reduce using rule 54 (Type)
 
 
-state 38
+state 41
+
+   55 Type: ArrayType .
+
+    $default  reduce using rule 55 (Type)
+
+
+state 42
 
     8 DeclarationStmt: VAR IDENTIFIER . Type
 
@@ -624,12 +696,12 @@ state 38
     STRING  shift, and go to state 5
     '['     shift, and go to state 15
 
-    Type       go to state 70
-    TypeName   go to state 36
-    ArrayType  go to state 37
+    Type       go to state 73
+    TypeName   go to state 40
+    ArrayType  go to state 41
 
 
-state 39
+state 43
 
    11 PrintStmt: PRINT '(' . Expression ')'
 
@@ -648,20 +720,24 @@ state 39
     '-'         shift, and go to state 17
     '!'         shift, and go to state 18
 
-    Expression      go to state 71
-    UnaryExpr       go to state 28
-    PrimaryExpr     go to state 29
-    Operand         go to state 30
-    IndexExpr       go to state 31
-    ConversionExpr  go to state 32
-    Literal         go to state 33
-    unary_op        go to state 34
-    Type            go to state 35
-    TypeName        go to state 36
-    ArrayType       go to state 37
+    Expression      go to state 74
+    SecExpr         go to state 28
+    ThirdExpr       go to state 29
+    ForthExpr       go to state 30
+    FifthExpr       go to state 31
+    UnaryExpr       go to state 32
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
 
 
-state 40
+state 44
 
    12 PrintStmt: PRINTLN '(' . Expression ')'
 
@@ -680,48 +756,35 @@ state 40
     '-'         shift, and go to state 17
     '!'         shift, and go to state 18
 
-    Expression      go to state 72
-    UnaryExpr       go to state 28
-    PrimaryExpr     go to state 29
-    Operand         go to state 30
-    IndexExpr       go to state 31
-    ConversionExpr  go to state 32
-    Literal         go to state 33
-    unary_op        go to state 34
-    Type            go to state 35
-    TypeName        go to state 36
-    ArrayType       go to state 37
+    Expression      go to state 75
+    SecExpr         go to state 28
+    ThirdExpr       go to state 29
+    ForthExpr       go to state 30
+    FifthExpr       go to state 31
+    UnaryExpr       go to state 32
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
 
 
-state 41
+state 45
 
-   17 Expression: Expression . binary_op Expression
-   25 Operand: '(' Expression . ')'
+   16 Expression: Expression . LOR SecExpr
+   33 Operand: '(' Expression . ')'
 
-    GEQ   shift, and go to state 50
-    LEQ   shift, and go to state 51
-    EQL   shift, and go to state 52
-    NEQ   shift, and go to state 53
-    LAND  shift, and go to state 54
-    LOR   shift, and go to state 55
-    ')'   shift, and go to state 73
-    '>'   shift, and go to state 56
-    '<'   shift, and go to state 57
-    '+'   shift, and go to state 58
-    '-'   shift, and go to state 59
-    '*'   shift, and go to state 60
-    '/'   shift, and go to state 61
-    '%'   shift, and go to state 62
-
-    binary_op  go to state 63
-    cmp_op     go to state 64
-    add_op     go to state 65
-    mul_op     go to state 66
+    LOR  shift, and go to state 54
+    ')'  shift, and go to state 76
 
 
-state 42
+state 46
 
-   57 ArrayType: '[' ']' . Type
+   60 ArrayType: '[' ']' . Type
 
     INT     shift, and go to state 2
     FLOAT   shift, and go to state 3
@@ -729,246 +792,274 @@ state 42
     STRING  shift, and go to state 5
     '['     shift, and go to state 15
 
-    Type       go to state 74
-    TypeName   go to state 36
-    ArrayType  go to state 37
+    Type       go to state 77
+    TypeName   go to state 40
+    ArrayType  go to state 41
 
 
-state 43
+state 47
 
     0 $accept: Program $end .
 
     $default  accept
 
 
-state 44
+state 48
 
     2 StatementList: StatementList Statement .
 
     $default  reduce using rule 2 (StatementList)
 
 
-state 45
+state 49
 
     4 Statement: DeclarationStmt NEWLINE .
 
     $default  reduce using rule 4 (Statement)
 
 
-state 46
+state 50
 
     5 Statement: SimpleStmt NEWLINE .
 
     $default  reduce using rule 5 (Statement)
 
 
-state 47
+state 51
 
     6 Statement: PrintStmt NEWLINE .
 
     $default  reduce using rule 6 (Statement)
 
 
-state 48
+state 52
 
    14 IncDecStmt: Expression INC .
 
     $default  reduce using rule 14 (IncDecStmt)
 
 
-state 49
+state 53
 
    15 IncDecStmt: Expression DEC .
 
     $default  reduce using rule 15 (IncDecStmt)
 
 
-state 50
-
-   39 cmp_op: GEQ .
-
-    $default  reduce using rule 39 (cmp_op)
-
-
-state 51
-
-   40 cmp_op: LEQ .
-
-    $default  reduce using rule 40 (cmp_op)
-
-
-state 52
-
-   37 cmp_op: EQL .
-
-    $default  reduce using rule 37 (cmp_op)
-
-
-state 53
-
-   38 cmp_op: NEQ .
-
-    $default  reduce using rule 38 (cmp_op)
-
-
 state 54
 
-   32 binary_op: LAND .
+   16 Expression: Expression LOR . SecExpr
 
-    $default  reduce using rule 32 (binary_op)
+    INT         shift, and go to state 2
+    FLOAT       shift, and go to state 3
+    BOOL        shift, and go to state 4
+    STRING      shift, and go to state 5
+    INT_LIT     shift, and go to state 9
+    FLOAT_LIT   shift, and go to state 10
+    STRING_LIT  shift, and go to state 11
+    IDENTIFIER  shift, and go to state 12
+    BOOL_LIT    shift, and go to state 13
+    '('         shift, and go to state 14
+    '['         shift, and go to state 15
+    '+'         shift, and go to state 16
+    '-'         shift, and go to state 17
+    '!'         shift, and go to state 18
+
+    SecExpr         go to state 78
+    ThirdExpr       go to state 29
+    ForthExpr       go to state 30
+    FifthExpr       go to state 31
+    UnaryExpr       go to state 32
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
 
 
 state 55
 
-   33 binary_op: LOR .
+   18 SecExpr: SecExpr LAND . ThirdExpr
 
-    $default  reduce using rule 33 (binary_op)
+    INT         shift, and go to state 2
+    FLOAT       shift, and go to state 3
+    BOOL        shift, and go to state 4
+    STRING      shift, and go to state 5
+    INT_LIT     shift, and go to state 9
+    FLOAT_LIT   shift, and go to state 10
+    STRING_LIT  shift, and go to state 11
+    IDENTIFIER  shift, and go to state 12
+    BOOL_LIT    shift, and go to state 13
+    '('         shift, and go to state 14
+    '['         shift, and go to state 15
+    '+'         shift, and go to state 16
+    '-'         shift, and go to state 17
+    '!'         shift, and go to state 18
+
+    ThirdExpr       go to state 79
+    ForthExpr       go to state 30
+    FifthExpr       go to state 31
+    UnaryExpr       go to state 32
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
 
 
 state 56
 
-   41 cmp_op: '>' .
-
-    $default  reduce using rule 41 (cmp_op)
-
-
-state 57
-
-   42 cmp_op: '<' .
+   42 cmp_op: GEQ .
 
     $default  reduce using rule 42 (cmp_op)
 
 
+state 57
+
+   43 cmp_op: LEQ .
+
+    $default  reduce using rule 43 (cmp_op)
+
+
 state 58
 
-   43 add_op: '+' .
+   40 cmp_op: EQL .
 
-    $default  reduce using rule 43 (add_op)
+    $default  reduce using rule 40 (cmp_op)
 
 
 state 59
 
-   44 add_op: '-' .
+   41 cmp_op: NEQ .
 
-    $default  reduce using rule 44 (add_op)
+    $default  reduce using rule 41 (cmp_op)
 
 
 state 60
 
-   45 mul_op: '*' .
+   44 cmp_op: '>' .
 
-    $default  reduce using rule 45 (mul_op)
+    $default  reduce using rule 44 (cmp_op)
 
 
 state 61
 
-   46 mul_op: '/' .
+   45 cmp_op: '<' .
 
-    $default  reduce using rule 46 (mul_op)
+    $default  reduce using rule 45 (cmp_op)
 
 
 state 62
 
-   47 mul_op: '%' .
+   20 ThirdExpr: ThirdExpr cmp_op . ForthExpr
 
-    $default  reduce using rule 47 (mul_op)
+    INT         shift, and go to state 2
+    FLOAT       shift, and go to state 3
+    BOOL        shift, and go to state 4
+    STRING      shift, and go to state 5
+    INT_LIT     shift, and go to state 9
+    FLOAT_LIT   shift, and go to state 10
+    STRING_LIT  shift, and go to state 11
+    IDENTIFIER  shift, and go to state 12
+    BOOL_LIT    shift, and go to state 13
+    '('         shift, and go to state 14
+    '['         shift, and go to state 15
+    '+'         shift, and go to state 16
+    '-'         shift, and go to state 17
+    '!'         shift, and go to state 18
+
+    ForthExpr       go to state 80
+    FifthExpr       go to state 31
+    UnaryExpr       go to state 32
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
 
 
 state 63
 
-   17 Expression: Expression binary_op . Expression
+   46 add_op: '+' .
 
-    INT         shift, and go to state 2
-    FLOAT       shift, and go to state 3
-    BOOL        shift, and go to state 4
-    STRING      shift, and go to state 5
-    INT_LIT     shift, and go to state 9
-    FLOAT_LIT   shift, and go to state 10
-    STRING_LIT  shift, and go to state 11
-    IDENTIFIER  shift, and go to state 12
-    BOOL_LIT    shift, and go to state 13
-    '('         shift, and go to state 14
-    '['         shift, and go to state 15
-    '+'         shift, and go to state 16
-    '-'         shift, and go to state 17
-    '!'         shift, and go to state 18
-
-    Expression      go to state 75
-    UnaryExpr       go to state 28
-    PrimaryExpr     go to state 29
-    Operand         go to state 30
-    IndexExpr       go to state 31
-    ConversionExpr  go to state 32
-    Literal         go to state 33
-    unary_op        go to state 34
-    Type            go to state 35
-    TypeName        go to state 36
-    ArrayType       go to state 37
+    $default  reduce using rule 46 (add_op)
 
 
 state 64
 
-   34 binary_op: cmp_op .
+   47 add_op: '-' .
 
-    $default  reduce using rule 34 (binary_op)
+    $default  reduce using rule 47 (add_op)
 
 
 state 65
 
-   35 binary_op: add_op .
+   22 ForthExpr: ForthExpr add_op . FifthExpr
 
-    $default  reduce using rule 35 (binary_op)
+    INT         shift, and go to state 2
+    FLOAT       shift, and go to state 3
+    BOOL        shift, and go to state 4
+    STRING      shift, and go to state 5
+    INT_LIT     shift, and go to state 9
+    FLOAT_LIT   shift, and go to state 10
+    STRING_LIT  shift, and go to state 11
+    IDENTIFIER  shift, and go to state 12
+    BOOL_LIT    shift, and go to state 13
+    '('         shift, and go to state 14
+    '['         shift, and go to state 15
+    '+'         shift, and go to state 16
+    '-'         shift, and go to state 17
+    '!'         shift, and go to state 18
+
+    FifthExpr       go to state 81
+    UnaryExpr       go to state 32
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
 
 
 state 66
 
-   36 binary_op: mul_op .
+   48 mul_op: '*' .
 
-    $default  reduce using rule 36 (binary_op)
+    $default  reduce using rule 48 (mul_op)
 
 
 state 67
 
-   26 IndexExpr: PrimaryExpr '[' . Expression ']'
+   49 mul_op: '/' .
 
-    INT         shift, and go to state 2
-    FLOAT       shift, and go to state 3
-    BOOL        shift, and go to state 4
-    STRING      shift, and go to state 5
-    INT_LIT     shift, and go to state 9
-    FLOAT_LIT   shift, and go to state 10
-    STRING_LIT  shift, and go to state 11
-    IDENTIFIER  shift, and go to state 12
-    BOOL_LIT    shift, and go to state 13
-    '('         shift, and go to state 14
-    '['         shift, and go to state 15
-    '+'         shift, and go to state 16
-    '-'         shift, and go to state 17
-    '!'         shift, and go to state 18
-
-    Expression      go to state 76
-    UnaryExpr       go to state 28
-    PrimaryExpr     go to state 29
-    Operand         go to state 30
-    IndexExpr       go to state 31
-    ConversionExpr  go to state 32
-    Literal         go to state 33
-    unary_op        go to state 34
-    Type            go to state 35
-    TypeName        go to state 36
-    ArrayType       go to state 37
+    $default  reduce using rule 49 (mul_op)
 
 
 state 68
 
-   19 UnaryExpr: unary_op UnaryExpr .
+   50 mul_op: '%' .
 
-    $default  reduce using rule 19 (UnaryExpr)
+    $default  reduce using rule 50 (mul_op)
 
 
 state 69
 
-   27 ConversionExpr: Type '(' . Expression ')'
+   24 FifthExpr: FifthExpr mul_op . UnaryExpr
 
     INT         shift, and go to state 2
     FLOAT       shift, and go to state 3
@@ -985,207 +1076,238 @@ state 69
     '-'         shift, and go to state 17
     '!'         shift, and go to state 18
 
-    Expression      go to state 77
-    UnaryExpr       go to state 28
-    PrimaryExpr     go to state 29
-    Operand         go to state 30
-    IndexExpr       go to state 31
-    ConversionExpr  go to state 32
-    Literal         go to state 33
-    unary_op        go to state 34
-    Type            go to state 35
-    TypeName        go to state 36
-    ArrayType       go to state 37
+    UnaryExpr       go to state 82
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
 
 
 state 70
+
+   34 IndexExpr: PrimaryExpr '[' . Expression ']'
+
+    INT         shift, and go to state 2
+    FLOAT       shift, and go to state 3
+    BOOL        shift, and go to state 4
+    STRING      shift, and go to state 5
+    INT_LIT     shift, and go to state 9
+    FLOAT_LIT   shift, and go to state 10
+    STRING_LIT  shift, and go to state 11
+    IDENTIFIER  shift, and go to state 12
+    BOOL_LIT    shift, and go to state 13
+    '('         shift, and go to state 14
+    '['         shift, and go to state 15
+    '+'         shift, and go to state 16
+    '-'         shift, and go to state 17
+    '!'         shift, and go to state 18
+
+    Expression      go to state 83
+    SecExpr         go to state 28
+    ThirdExpr       go to state 29
+    ForthExpr       go to state 30
+    FifthExpr       go to state 31
+    UnaryExpr       go to state 32
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
+
+
+state 71
+
+   27 UnaryExpr: unary_op UnaryExpr .
+
+    $default  reduce using rule 27 (UnaryExpr)
+
+
+state 72
+
+   35 ConversionExpr: Type '(' . Expression ')'
+
+    INT         shift, and go to state 2
+    FLOAT       shift, and go to state 3
+    BOOL        shift, and go to state 4
+    STRING      shift, and go to state 5
+    INT_LIT     shift, and go to state 9
+    FLOAT_LIT   shift, and go to state 10
+    STRING_LIT  shift, and go to state 11
+    IDENTIFIER  shift, and go to state 12
+    BOOL_LIT    shift, and go to state 13
+    '('         shift, and go to state 14
+    '['         shift, and go to state 15
+    '+'         shift, and go to state 16
+    '-'         shift, and go to state 17
+    '!'         shift, and go to state 18
+
+    Expression      go to state 84
+    SecExpr         go to state 28
+    ThirdExpr       go to state 29
+    ForthExpr       go to state 30
+    FifthExpr       go to state 31
+    UnaryExpr       go to state 32
+    PrimaryExpr     go to state 33
+    Operand         go to state 34
+    IndexExpr       go to state 35
+    ConversionExpr  go to state 36
+    Literal         go to state 37
+    unary_op        go to state 38
+    Type            go to state 39
+    TypeName        go to state 40
+    ArrayType       go to state 41
+
+
+state 73
 
     8 DeclarationStmt: VAR IDENTIFIER Type .
 
     $default  reduce using rule 8 (DeclarationStmt)
 
 
-state 71
-
-   11 PrintStmt: PRINT '(' Expression . ')'
-   17 Expression: Expression . binary_op Expression
-
-    GEQ   shift, and go to state 50
-    LEQ   shift, and go to state 51
-    EQL   shift, and go to state 52
-    NEQ   shift, and go to state 53
-    LAND  shift, and go to state 54
-    LOR   shift, and go to state 55
-    ')'   shift, and go to state 78
-    '>'   shift, and go to state 56
-    '<'   shift, and go to state 57
-    '+'   shift, and go to state 58
-    '-'   shift, and go to state 59
-    '*'   shift, and go to state 60
-    '/'   shift, and go to state 61
-    '%'   shift, and go to state 62
-
-    binary_op  go to state 63
-    cmp_op     go to state 64
-    add_op     go to state 65
-    mul_op     go to state 66
-
-
-state 72
-
-   12 PrintStmt: PRINTLN '(' Expression . ')'
-   17 Expression: Expression . binary_op Expression
-
-    GEQ   shift, and go to state 50
-    LEQ   shift, and go to state 51
-    EQL   shift, and go to state 52
-    NEQ   shift, and go to state 53
-    LAND  shift, and go to state 54
-    LOR   shift, and go to state 55
-    ')'   shift, and go to state 79
-    '>'   shift, and go to state 56
-    '<'   shift, and go to state 57
-    '+'   shift, and go to state 58
-    '-'   shift, and go to state 59
-    '*'   shift, and go to state 60
-    '/'   shift, and go to state 61
-    '%'   shift, and go to state 62
-
-    binary_op  go to state 63
-    cmp_op     go to state 64
-    add_op     go to state 65
-    mul_op     go to state 66
-
-
-state 73
-
-   25 Operand: '(' Expression ')' .
-
-    $default  reduce using rule 25 (Operand)
-
-
 state 74
 
-   57 ArrayType: '[' ']' Type .
+   11 PrintStmt: PRINT '(' Expression . ')'
+   16 Expression: Expression . LOR SecExpr
 
-    $default  reduce using rule 57 (ArrayType)
+    LOR  shift, and go to state 54
+    ')'  shift, and go to state 85
 
 
 state 75
 
-   17 Expression: Expression . binary_op Expression
-   17           | Expression binary_op Expression .
+   12 PrintStmt: PRINTLN '(' Expression . ')'
+   16 Expression: Expression . LOR SecExpr
 
-    GEQ   shift, and go to state 50
-    LEQ   shift, and go to state 51
-    EQL   shift, and go to state 52
-    NEQ   shift, and go to state 53
-    LAND  shift, and go to state 54
-    LOR   shift, and go to state 55
-    '>'   shift, and go to state 56
-    '<'   shift, and go to state 57
-    '+'   shift, and go to state 58
-    '-'   shift, and go to state 59
-    '*'   shift, and go to state 60
-    '/'   shift, and go to state 61
-    '%'   shift, and go to state 62
-
-    GEQ       [reduce using rule 17 (Expression)]
-    LEQ       [reduce using rule 17 (Expression)]
-    EQL       [reduce using rule 17 (Expression)]
-    NEQ       [reduce using rule 17 (Expression)]
-    LAND      [reduce using rule 17 (Expression)]
-    LOR       [reduce using rule 17 (Expression)]
-    '>'       [reduce using rule 17 (Expression)]
-    '<'       [reduce using rule 17 (Expression)]
-    '+'       [reduce using rule 17 (Expression)]
-    '-'       [reduce using rule 17 (Expression)]
-    '*'       [reduce using rule 17 (Expression)]
-    '/'       [reduce using rule 17 (Expression)]
-    '%'       [reduce using rule 17 (Expression)]
-    $default  reduce using rule 17 (Expression)
-
-    binary_op  go to state 63
-    cmp_op     go to state 64
-    add_op     go to state 65
-    mul_op     go to state 66
+    LOR  shift, and go to state 54
+    ')'  shift, and go to state 86
 
 
 state 76
 
-   17 Expression: Expression . binary_op Expression
-   26 IndexExpr: PrimaryExpr '[' Expression . ']'
+   33 Operand: '(' Expression ')' .
 
-    GEQ   shift, and go to state 50
-    LEQ   shift, and go to state 51
-    EQL   shift, and go to state 52
-    NEQ   shift, and go to state 53
-    LAND  shift, and go to state 54
-    LOR   shift, and go to state 55
-    ']'   shift, and go to state 80
-    '>'   shift, and go to state 56
-    '<'   shift, and go to state 57
-    '+'   shift, and go to state 58
-    '-'   shift, and go to state 59
-    '*'   shift, and go to state 60
-    '/'   shift, and go to state 61
-    '%'   shift, and go to state 62
-
-    binary_op  go to state 63
-    cmp_op     go to state 64
-    add_op     go to state 65
-    mul_op     go to state 66
+    $default  reduce using rule 33 (Operand)
 
 
 state 77
 
-   17 Expression: Expression . binary_op Expression
-   27 ConversionExpr: Type '(' Expression . ')'
+   60 ArrayType: '[' ']' Type .
 
-    GEQ   shift, and go to state 50
-    LEQ   shift, and go to state 51
-    EQL   shift, and go to state 52
-    NEQ   shift, and go to state 53
-    LAND  shift, and go to state 54
-    LOR   shift, and go to state 55
-    ')'   shift, and go to state 81
-    '>'   shift, and go to state 56
-    '<'   shift, and go to state 57
-    '+'   shift, and go to state 58
-    '-'   shift, and go to state 59
-    '*'   shift, and go to state 60
-    '/'   shift, and go to state 61
-    '%'   shift, and go to state 62
-
-    binary_op  go to state 63
-    cmp_op     go to state 64
-    add_op     go to state 65
-    mul_op     go to state 66
+    $default  reduce using rule 60 (ArrayType)
 
 
 state 78
+
+   16 Expression: Expression LOR SecExpr .
+   18 SecExpr: SecExpr . LAND ThirdExpr
+
+    LAND  shift, and go to state 55
+
+    $default  reduce using rule 16 (Expression)
+
+
+state 79
+
+   18 SecExpr: SecExpr LAND ThirdExpr .
+   20 ThirdExpr: ThirdExpr . cmp_op ForthExpr
+
+    GEQ  shift, and go to state 56
+    LEQ  shift, and go to state 57
+    EQL  shift, and go to state 58
+    NEQ  shift, and go to state 59
+    '>'  shift, and go to state 60
+    '<'  shift, and go to state 61
+
+    $default  reduce using rule 18 (SecExpr)
+
+    cmp_op  go to state 62
+
+
+state 80
+
+   20 ThirdExpr: ThirdExpr cmp_op ForthExpr .
+   22 ForthExpr: ForthExpr . add_op FifthExpr
+
+    '+'  shift, and go to state 63
+    '-'  shift, and go to state 64
+
+    $default  reduce using rule 20 (ThirdExpr)
+
+    add_op  go to state 65
+
+
+state 81
+
+   22 ForthExpr: ForthExpr add_op FifthExpr .
+   24 FifthExpr: FifthExpr . mul_op UnaryExpr
+
+    '*'  shift, and go to state 66
+    '/'  shift, and go to state 67
+    '%'  shift, and go to state 68
+
+    $default  reduce using rule 22 (ForthExpr)
+
+    mul_op  go to state 69
+
+
+state 82
+
+   24 FifthExpr: FifthExpr mul_op UnaryExpr .
+
+    $default  reduce using rule 24 (FifthExpr)
+
+
+state 83
+
+   16 Expression: Expression . LOR SecExpr
+   34 IndexExpr: PrimaryExpr '[' Expression . ']'
+
+    LOR  shift, and go to state 54
+    ']'  shift, and go to state 87
+
+
+state 84
+
+   16 Expression: Expression . LOR SecExpr
+   35 ConversionExpr: Type '(' Expression . ')'
+
+    LOR  shift, and go to state 54
+    ')'  shift, and go to state 88
+
+
+state 85
 
    11 PrintStmt: PRINT '(' Expression ')' .
 
     $default  reduce using rule 11 (PrintStmt)
 
 
-state 79
+state 86
 
    12 PrintStmt: PRINTLN '(' Expression ')' .
 
     $default  reduce using rule 12 (PrintStmt)
 
 
-state 80
+state 87
 
-   26 IndexExpr: PrimaryExpr '[' Expression ']' .
+   34 IndexExpr: PrimaryExpr '[' Expression ']' .
 
-    $default  reduce using rule 26 (IndexExpr)
+    $default  reduce using rule 34 (IndexExpr)
 
 
-state 81
+state 88
 
-   27 ConversionExpr: Type '(' Expression ')' .
+   35 ConversionExpr: Type '(' Expression ')' .
 
-    $default  reduce using rule 27 (ConversionExpr)
+    $default  reduce using rule 35 (ConversionExpr)

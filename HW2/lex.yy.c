@@ -1097,12 +1097,12 @@ YY_RULE_SETUP
 case 49:
 YY_RULE_SETUP
 #line 86 "compiler_hw2.l"
-{;}
+{ yylval.b_val = strdup("TRUE"); return BOOL_LIT; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
 #line 87 "compiler_hw2.l"
-{;}
+{ yylval.b_val = strdup("FALSE"); return BOOL_LIT; }
 	YY_BREAK
 case 51:
 YY_RULE_SETUP

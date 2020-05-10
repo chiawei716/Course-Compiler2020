@@ -164,7 +164,15 @@ Operand
 ;
 
 IndexExpr : PrimaryExpr '[' Expression ']' ;
-ConversionExpr : Type '(' Expression ')' ;
+
+ConversionExpr
+	: Type '(' Expression ')' { 
+		if((strcmp($1, "float32") == 0) && (strcmp($3, "int32") == 0)) 
+			printf("I to F\n");
+		else if((strcmp($1, "int32") == 0) && (strcmp($3, "float32") == 0))
+			printf("F to I\n");
+	}
+;
 
 Literal
 	: INT_LIT 		{ printf("INT_LIT %d\n", $1); $$ = "int32"; }

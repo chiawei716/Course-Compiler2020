@@ -94,6 +94,7 @@ Statement
 	| PrintStmt NEWLINE
 	| Block NEWLINE
 	| IfStmt NEWLINE
+	| ForStmt NEWLINE
 	| NEWLINE
 ;
 
@@ -123,6 +124,23 @@ IfStmt
 	| IF Condition Block ELSE Block
 ;
 
+ForStmt
+	: FOR Condition Block
+	| FOR ForClause Block
+;
+
+ForClause
+	: InitStmt ';' Condition ';' PostStmt
+;
+
+InitStmt
+	: SimpleStmt
+;
+
+PostStmt
+	: SimpleStmt
+;
+
 Condition
 	: Expression
 ;
@@ -147,7 +165,7 @@ Expression
 	| Expression GEQ Expression 	{ printf("GEQ\n"); }
 	| Expression LEQ Expression 	{ printf("LEQ\n"); }
 	| Expression '>' Expression 	{ printf("GTR\n"); }
-	| Expression '<' Expression 	{ printf("LTR\n"); }
+	| Expression '<' Expression 	{ printf("LSS\n"); }
 	| Expression '+' Expression 	{ printf("ADD\n"); }
 	| Expression '-' Expression 	{ printf("SUB\n"); }
 	| Expression '*' Expression 	{ printf("MUL\n"); }

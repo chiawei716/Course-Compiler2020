@@ -17,6 +17,8 @@
 	int scope = 0;
 	int address = 0;
 	int isArray = 0;
+	int assignable = 1;
+	int assignable_result = 1;
 	struct Table_List *tables = NULL;
 		
 	//tables.head = tables->tail = malloc(sizeof(struct Table));
@@ -154,7 +156,12 @@ IncDecStmt
 ;
 
 AssignStmt
-	: Expression assign_op Expression { if(strcmp($1, $3) != 0) type_error($2, $1, $3); printf("%s\n", $2); }
+	: Expression assign_op Expression {
+		if(assignable_result == 0) printf("error:%d: cannot assign to %s\n", yylineno, $1);
+		if(strcmp($1, $3) != 0) type_error($2, $1, $3); 
+		printf("%s\n", $2); 
+		assignable = 1;
+	}
 ;
 
 Expression
@@ -164,35 +171,38 @@ Expression
 		else if(strcmp($3, "bool") != 0) type_error("LOR", $3, "-");
 		printf("LOR\n");
 		$$ = "bool";
+		assignable = 0; 
 	}
 	| Expression LAND Expression 	{ 
 		if(strcmp($1, "bool") != 0) type_error("LAND", $1, "-");
 		else if(strcmp($3, "bool") != 0) type_error("LAND", $3, "-");
 		printf("LAND\n"); 
 		$$ = "bool"; 
+		assignable = 0; 
 	}
-	| Expression EQL Expression 	{ printf("EQL\n"); $$ = "bool"; }
-	| Expression NEQ Expression 	{ printf("NEQ\n"); $$ = "bool"; }
-	| Expression GEQ Expression 	{ printf("GEQ\n"); $$ = "bool"; }
-	| Expression LEQ Expression 	{ printf("LEQ\n"); $$ = "bool"; }
-	| Expression '>' Expression 	{ printf("GTR\n"); $$ = "bool"; }
-	| Expression '<' Expression 	{ printf("LSS\n"); $$ = "bool"; }
-	| Expression '+' Expression 	{ if(strcmp($1, $3) != 0) type_error("ADD", $1, $3);  printf("ADD\n"); }
-	| Expression '-' Expression 	{ if(strcmp($1, $3) != 0) type_error("SUB", $1, $3); printf("SUB\n"); }
-	| Expression '*' Expression 	{ printf("MUL\n"); }
-	| Expression '/' Expression 	{ printf("QUO\n"); }
+	| Expression EQL Expression 	{ printf("EQL\n"); $$ = "bool"; assignable = 0; }
+	| Expression NEQ Expression 	{ printf("NEQ\n"); $$ = "bool"; assignable = 0; }
+	| Expression GEQ Expression 	{ printf("GEQ\n"); $$ = "bool"; assignable = 0; }
+	| Expression LEQ Expression 	{ printf("LEQ\n"); $$ = "bool"; assignable = 0; }
+	| Expression '>' Expression 	{ printf("GTR\n"); $$ = "bool"; assignable = 0; }
+	| Expression '<' Expression 	{ printf("LSS\n"); $$ = "bool"; assignable = 0; }
+	| Expression '+' Expression 	{ if(strcmp($1, $3) != 0) type_error("ADD", $1, $3);  printf("ADD\n"); assignable = 0; }
+	| Expression '-' Expression 	{ if(strcmp($1, $3) != 0) type_error("SUB", $1, $3); printf("SUB\n"); assignable = 0; }
+	| Expression '*' Expression 	{ printf("MUL\n"); assignable = 0; }
+	| Expression '/' Expression 	{ printf("QUO\n"); assignable = 0; }
 	| Expression '%' Expression 	{ 
 		if(strcmp($1, "int32") != 0) type_error("REM", $1, "-");
 		else if(strcmp($3, "int32") != 0) type_error("REM", $3, "-");
 		printf("REM\n"); 
+		assignable = 0; 
 	}
 ;
 
 UnaryExpr
 	: PrimaryExpr { $$ = $1; }
-	| '+' UnaryExpr { $$ = $2; printf("POS\n"); }
-	| '-' UnaryExpr { $$ = $2; printf("NEG\n"); }
-	| '!' UnaryExpr { $$ = $2; printf("NOT\n"); }
+	| '+' UnaryExpr { $$ = $2; printf("POS\n"); assignable = 0; }
+	| '-' UnaryExpr { $$ = $2; printf("NEG\n"); assignable = 0; }
+	| '!' UnaryExpr { $$ = $2; printf("NOT\n"); assignable = 0; }
 ;
 
 PrimaryExpr
@@ -202,12 +212,12 @@ PrimaryExpr
 ;
 
 Operand
-	: Literal { $$ = $1; }
-	| IDENTIFIER { $$ = lookup_symbol($1); }
+	: Literal { $$ = $1; assignable = 0; }
+	| IDENTIFIER { $$ = lookup_symbol($1); assignable = 1; }
 	| '(' Expression ')' { $$ = $2; }
 ;
 
-IndexExpr : PrimaryExpr '[' Expression ']' ;
+IndexExpr : PrimaryExpr '[' Expression ']' { assignable = 1; };
 
 ConversionExpr
 	: Type '(' Expression ')' { 
@@ -226,12 +236,12 @@ Literal
 ;
 
 assign_op
-	: '='			{ $$ = "ASSIGN"; }
-	| ADD_ASSIGN 	{ $$ = "ADD_ASSIGN"; }
-	| SUB_ASSIGN	{ $$ = "SUB_ASSIGN"; }
-	| MUL_ASSIGN	{ $$ = "MUL_ASSIGN"; }
-	| QUO_ASSIGN	{ $$ = "QUO_ASSIGN"; }
-	| REM_ASSIGN	{ $$ = "REM_ASSIGN"; }
+	: '='			{ $$ = "ASSIGN"; assignable_result = assignable; }
+	| ADD_ASSIGN 	{ $$ = "ADD_ASSIGN"; assignable_result = assignable; }
+	| SUB_ASSIGN	{ $$ = "SUB_ASSIGN"; assignable_result = assignable; }
+	| MUL_ASSIGN	{ $$ = "MUL_ASSIGN"; assignable_result = assignable; }
+	| QUO_ASSIGN	{ $$ = "QUO_ASSIGN"; assignable_result = assignable; }
+	| REM_ASSIGN	{ $$ = "REM_ASSIGN"; assignable_result = assignable; }
 ;
 
 Type
@@ -302,6 +312,18 @@ static void create_symbol()
 static void insert_symbol(char *id, char *type) {
 
 	struct Table *table = tables->head;
+
+	// Check if redeclared
+	struct Symbol *symbol = table->head;
+	while(symbol)
+	{
+		if(strcmp(id, symbol->name) == 0)
+		{
+			printf("error:%d: %s redeclared in this block. previous declaration at line %d\n", yylineno, id, symbol->lineno);
+			return;
+		}
+		symbol = symbol->next;
+	}
 	
 	// Create new symbol
 	struct Symbol *newSymbol = malloc(sizeof(struct Symbol));
@@ -356,7 +378,8 @@ static char* lookup_symbol(char* id)
 		}
 		table = table->next;
 	}
-	return NULL;
+	printf("error:%d: undefined: %s\n", yylineno + 1, id);
+	return "none";
 }
 
 static void dump_symbol() 
@@ -400,6 +423,12 @@ static void dump_symbol()
 
 static void type_error(char *operator, char *typeA, char *typeB)
 {
+	if(
+		strcmp(typeA, "none") == 0 ||
+		strcmp(typeB, "none") == 0
+	)
+		return;
+
 	if(
 		strcmp(operator, "ADD") == 0 ||
 		strcmp(operator, "SUB") == 0 ||

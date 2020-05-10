@@ -16,6 +16,7 @@
 	/* Symbol table variables */
 	int scope = 0;
 	int address = 0;
+	int isArray = 0;
 	struct Table_List *tables = NULL;
 		
 	//tables.head = tables->tail = malloc(sizeof(struct Table));
@@ -26,9 +27,16 @@
     static void insert_symbol();
     static char *lookup_symbol();
     static void dump_symbol();
+	static void printAll();
 %}
 
 %error-verbose
+
+%left LOR
+%left LAND
+%left EQL NEQ GEQ LEQ '>' '<'
+%left '+' '-'
+%left '*' '/' '%'
 
 /* Use variable or self-defined structure to represent
  * nonterminal and token type
@@ -40,15 +48,14 @@
     char *b_val;
 	char *type;
 	char *operation;
+	int scope;
 }
 
 /* Token without return */
 %token VAR
 %token INT FLOAT BOOL STRING
 %token INC DEC
-%token GEQ LEQ EQL NEQ
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN QUO_ASSIGN REM_ASSIGN
-%token LAND LOR
 %token NEWLINE
 %token PRINT PRINTLN
 %token IF ELSE FOR
@@ -61,9 +68,10 @@
 
 /* Nonterminal with return, which need to sepcify type */
 %type <type> Type TypeName ArrayType
-%type <operation> add_op mul_op cmp_op binary_op unary_op
-%type <type> Expression SecExpr ThirdExpr ForthExpr FifthExpr
+%type <operation> assign_op
+%type <type> Expression
 %type <type> Literal Operand UnaryExpr PrimaryExpr
+%type <scope> DeclarationStmt
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -81,24 +89,31 @@ StatementList
 ;
 
 Statement
-	: DeclarationStmt NEWLINE
-	| SimpleStmt NEWLINE
+	: SimpleStmt NEWLINE
+	| DeclarationStmt NEWLINE
 	| PrintStmt NEWLINE
+	| Block NEWLINE
 	| NEWLINE
 ;
 
 DeclarationStmt
-	: VAR IDENTIFIER Type { insert_symbol($2, $3, "-"); }
+	: VAR IDENTIFIER Type { insert_symbol($2, $3); }
+	| VAR IDENTIFIER Type '=' Expression { insert_symbol($2, $3); }
 ;
 
 SimpleStmt
 	: ExpressionStmt
 	| IncDecStmt
+	| AssignStmt
 ;
 
 PrintStmt
 	: PRINT '(' Expression ')' { printf("PRINT %s\n", $3); }
 	| PRINTLN '(' Expression ')' { printf("PRINTLN %s\n", $3); }
+;
+
+Block
+	: BRACE_UP StatementList BRACE_DOWN { dump_symbol(); scope--; } 
 ;
 
 ExpressionStmt : Expression ;
@@ -108,34 +123,32 @@ IncDecStmt
 	| Expression DEC { printf("DEC\n"); }
 ;
 
+AssignStmt
+	: Expression assign_op Expression { printf("%s\n", $2); }
+;
+
 Expression
-	: Expression LOR SecExpr { printf("LOR\n"); }
-	| SecExpr { $$ = "bool"; }
-;
-
-SecExpr
-	: SecExpr LAND ThirdExpr { printf("LAND\n"); }
-	| ThirdExpr { $$ = "bool"; }
-;
-
-ThirdExpr
-	: ThirdExpr cmp_op  ForthExpr { printf("%s\n", $2); }
-	| ForthExpr { $$ = $1; }
-;
-
-ForthExpr
-	: ForthExpr add_op FifthExpr { printf("%s\n", $2); }
-	| FifthExpr { $$ = $1; }
-;
-
-FifthExpr
-	: FifthExpr mul_op UnaryExpr { printf("%s\n", $2); }
-	| UnaryExpr { $$ = $1; }
+	: UnaryExpr	{ $$ = $1; }
+	| Expression LOR Expression 	{ printf("LOR\n"); $$ = "bool"; }
+	| Expression LAND Expression 	{ printf("LAND\n"); $$ = "bool"; }
+	| Expression EQL Expression 	{ printf("EQL\n"); }
+	| Expression NEQ Expression 	{ printf("NEQ\n"); }
+	| Expression GEQ Expression 	{ printf("GEQ\n"); }
+	| Expression LEQ Expression 	{ printf("LEQ\n"); }
+	| Expression '>' Expression 	{ printf("GTR\n"); }
+	| Expression '<' Expression 	{ printf("LTR\n"); }
+	| Expression '+' Expression 	{ printf("ADD\n"); }
+	| Expression '-' Expression 	{ printf("SUB\n"); }
+	| Expression '*' Expression 	{ printf("MUL\n"); }
+	| Expression '/' Expression 	{ printf("QUO\n"); }
+	| Expression '%' Expression 	{ printf("REM\n"); }
 ;
 
 UnaryExpr
 	: PrimaryExpr { $$ = $1; }
-	| unary_op UnaryExpr { printf("%s\n", $1); }
+	| '+' UnaryExpr { printf("POS\n"); }
+	| '-' UnaryExpr { printf("NEG\n"); }
+	| '!' UnaryExpr { printf("NOT\n"); }
 ;
 
 PrimaryExpr
@@ -145,7 +158,7 @@ PrimaryExpr
 ;
 
 Operand
-	: Literal
+	: Literal { $$ = $1; }
 	| IDENTIFIER { $$ = lookup_symbol($1); }
 	| '(' Expression ')' { $$ = $2; }
 ;
@@ -156,47 +169,22 @@ ConversionExpr : Type '(' Expression ')' ;
 Literal
 	: INT_LIT 		{ printf("INT_LIT %d\n", $1); $$ = "int32"; }
 	| FLOAT_LIT 	{ printf("FLOAT_LIT %f\n", $1); $$ = "float32"; }
-	| STRING_LIT 	{ printf("STRING_LIT %s\n", $1); $$ = "string"; }
+	| '"' STRING_LIT '"'	{ printf("STRING_LIT %s\n", $2); $$ = "string"; }
 	| BOOL_LIT		{ printf("%s\n", $1); $$ = "bool"; } 
 ;
 
-binary_op
-	: mul_op { $$ = $1; }
-	| add_op { $$ = $1; } 
-	| cmp_op
-	| LAND
-	| LOR
-;
-
-cmp_op
-	: EQL	{ $$ = "EQL"; }
-	| NEQ 	{ $$ = "NEQ"; }
-	| GEQ 	{ $$ = "GEQ"; }
-	| LEQ 	{ $$ = "LEQ"; }
-	| '>' 	{ $$ = "GTR"; }
-	| '<' 	{ $$ = "LTR"; }
-;
-
-add_op
-	: '+' { $$ = "ADD"; }
-	| '-' { $$ = "SUB"; }
-;
-
-mul_op
-	: '*' { $$ = "MUL"; }
-	| '/' { $$ = "QUO"; }
-	| '%' { $$ = "REM"; }
-;
-
-unary_op
-	: '+' { $$ = "POS"; }
-	| '-' { $$ = "NEG"; }
-	| '!' { $$ = "NOT"; }
+assign_op
+	: '='			{ $$ = "ASSIGN"; }
+	| ADD_ASSIGN 	{ $$ = "ADD_ASSIGN"; }
+	| SUB_ASSIGN	{ $$ = "SUB_ASSIGN"; }
+	| MUL_ASSIGN	{ $$ = "MUL_ASSIGN"; }
+	| QUO_ASSIGN	{ $$ = "QUO_ASSIGN"; }
+	| REM_ASSIGN	{ $$ = "REM_ASSIGN"; }
 ;
 
 Type
 	: TypeName { $$ = $1; }
-	| ArrayType
+	| ArrayType { $$ = $1; }
 ;
 
 TypeName
@@ -207,9 +195,15 @@ TypeName
 ;
 
 ArrayType
-	: '['  ']' Type
+	: '[' Expression  ']' Type { $$ = $4; isArray = 1; }
 ;
 
+BRACE_UP
+	: '{' { scope++; create_symbol(); } 
+;
+BRACE_DOWN
+	: '}'
+;
 
 %%
 
@@ -224,6 +218,7 @@ int main(int argc, char *argv[])
 
 	tables = malloc(sizeof(struct Table_List));
 	tables->head = tables->tail = NULL;
+	create_symbol();
 
     yylineno = 0;
     yyparse();
@@ -235,8 +230,8 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-static void create_symbol(char* id, char* type, char* element_type) 
-{ 
+static void create_symbol() 
+{ 	
 	// Create table
 	struct Table *newTable = malloc(sizeof(struct Table));
 	newTable->scope = scope;
@@ -250,51 +245,42 @@ static void create_symbol(char* id, char* type, char* element_type)
 	{
 		tables->head = tables->tail = newTable;
 	}
-
-	// Call insert again
-	insert_symbol(id, type, element_type);
 }
 
-static void insert_symbol(char *id, char *type, char *element_type) {
+static void insert_symbol(char *id, char *type) {
 
-	struct Table *table = tables->head;	
-
-	// Find specific scope
-	if(table)
-		if(table->scope == scope)
-		{
-			// Create new symbol
-			struct Symbol *newSymbol = malloc(sizeof(struct Symbol));
-			newSymbol->name = strdup(id);
-			newSymbol->type = strdup(type);
-			newSymbol->address = address++;
-			newSymbol->lineno = yylineno + 1;
-			newSymbol->element_type = strdup(element_type);
-			newSymbol->next = NULL;
+	struct Table *table = tables->head;
 	
-			if(table->head)
-			{
-				newSymbol->index = table->tail->index + 1;
-				table->tail->next = newSymbol;
-				table->tail = newSymbol;
-			}
-			else
-			{
-				newSymbol->index = 0;
-				table->head = table->tail = newSymbol;
-			}
-		}
-		// If no table matches scope level, create one
-		else
-		{
-			create_symbol(id, type, element_type);
-			return;
-		}
+	// Create new symbol
+	struct Symbol *newSymbol = malloc(sizeof(struct Symbol));
+	newSymbol->name = strdup(id);
+	newSymbol->address = address++;
+	newSymbol->lineno = yylineno;
+	if(isArray)
+	{
+		newSymbol->type = strdup("array");
+		newSymbol->element_type = strdup(type);
+		isArray = 0;
+	}
 	else
 	{
-		create_symbol(id, type, element_type);
-		return;
+		newSymbol->type = strdup(type);
+		newSymbol->element_type = strdup("-");
 	}
+	newSymbol->next = NULL;
+	
+	if(table->head)
+	{
+		newSymbol->index = table->tail->index + 1;
+		table->tail->next = newSymbol;
+		table->tail = newSymbol;
+	}
+	else
+	{
+		newSymbol->index = 0;
+		table->head = table->tail = newSymbol;
+	}		
+	
 	// Print message
     printf("> Insert {%s} into symbol table (scope level: %d)\n", id, scope);
 }
@@ -311,7 +297,7 @@ static char* lookup_symbol(char* id)
 			if(strcmp(id, symbol->name) == 0)
 			{
 				printf("IDENT (name=%s, address=%d)\n", id, symbol->address);
-				return symbol->name;
+				return strcmp(symbol->type, "array") == 0 ? symbol->element_type : symbol->type;
 			}
 			else
 				symbol = symbol->next;
@@ -355,6 +341,23 @@ static void dump_symbol()
 	
 	// Remove table
 	struct Table *newHead = tables->head->next;
+	tables->head->head = tables->head->tail = NULL;
 	free(tables->head);
 	tables->head = newHead;
+}
+
+static void printAll()
+{
+	struct Table *table = tables->head;
+	while(table)
+	{
+		struct Symbol *symbol = table->head;
+		while(symbol)
+		{
+			printf("%-10d%-10s%-10s%-10d%-10d%s\n",
+            	symbol->index, symbol->name, symbol->type, symbol->address, symbol->lineno, symbol->element_type);
+				symbol = symbol->next;
+		}
+		table = table->next;
+	}
 }

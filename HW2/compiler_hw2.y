@@ -93,6 +93,7 @@ Statement
 	| DeclarationStmt NEWLINE
 	| PrintStmt NEWLINE
 	| Block NEWLINE
+	| IfStmt NEWLINE
 	| NEWLINE
 ;
 
@@ -114,6 +115,16 @@ PrintStmt
 
 Block
 	: BRACE_UP StatementList BRACE_DOWN { dump_symbol(); scope--; } 
+;
+
+IfStmt
+	: IF Condition Block 
+	| IF Condition Block ELSE IfStmt
+	| IF Condition Block ELSE Block
+;
+
+Condition
+	: Expression
 ;
 
 ExpressionStmt : Expression ;

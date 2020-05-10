@@ -27,7 +27,8 @@
     static void insert_symbol();
     static char *lookup_symbol();
     static void dump_symbol();
-	static void printAll();
+
+	static void type_error();
 %}
 
 %error-verbose
@@ -142,7 +143,7 @@ PostStmt
 ;
 
 Condition
-	: Expression
+	: Expression { if(strcmp($1, "bool") != 0) type_error("CONDITION", $1, "-"); }
 ;
 
 ExpressionStmt : Expression ;
@@ -153,31 +154,45 @@ IncDecStmt
 ;
 
 AssignStmt
-	: Expression assign_op Expression { printf("%s\n", $2); }
+	: Expression assign_op Expression { if(strcmp($1, $3) != 0) type_error($2, $1, $3); printf("%s\n", $2); }
 ;
 
 Expression
 	: UnaryExpr	{ $$ = $1; }
-	| Expression LOR Expression 	{ printf("LOR\n"); $$ = "bool"; }
-	| Expression LAND Expression 	{ printf("LAND\n"); $$ = "bool"; }
-	| Expression EQL Expression 	{ printf("EQL\n"); }
-	| Expression NEQ Expression 	{ printf("NEQ\n"); }
-	| Expression GEQ Expression 	{ printf("GEQ\n"); }
-	| Expression LEQ Expression 	{ printf("LEQ\n"); }
-	| Expression '>' Expression 	{ printf("GTR\n"); }
-	| Expression '<' Expression 	{ printf("LSS\n"); }
-	| Expression '+' Expression 	{ printf("ADD\n"); }
-	| Expression '-' Expression 	{ printf("SUB\n"); }
+	| Expression LOR Expression 	{ 
+		if(strcmp($1, "bool") != 0) type_error("LOR", $1, "-");
+		else if(strcmp($3, "bool") != 0) type_error("LOR", $3, "-");
+		printf("LOR\n");
+		$$ = "bool";
+	}
+	| Expression LAND Expression 	{ 
+		if(strcmp($1, "bool") != 0) type_error("LAND", $1, "-");
+		else if(strcmp($3, "bool") != 0) type_error("LAND", $3, "-");
+		printf("LAND\n"); 
+		$$ = "bool"; 
+	}
+	| Expression EQL Expression 	{ printf("EQL\n"); $$ = "bool"; }
+	| Expression NEQ Expression 	{ printf("NEQ\n"); $$ = "bool"; }
+	| Expression GEQ Expression 	{ printf("GEQ\n"); $$ = "bool"; }
+	| Expression LEQ Expression 	{ printf("LEQ\n"); $$ = "bool"; }
+	| Expression '>' Expression 	{ printf("GTR\n"); $$ = "bool"; }
+	| Expression '<' Expression 	{ printf("LSS\n"); $$ = "bool"; }
+	| Expression '+' Expression 	{ if(strcmp($1, $3) != 0) type_error("ADD", $1, $3);  printf("ADD\n"); }
+	| Expression '-' Expression 	{ if(strcmp($1, $3) != 0) type_error("SUB", $1, $3); printf("SUB\n"); }
 	| Expression '*' Expression 	{ printf("MUL\n"); }
 	| Expression '/' Expression 	{ printf("QUO\n"); }
-	| Expression '%' Expression 	{ printf("REM\n"); }
+	| Expression '%' Expression 	{ 
+		if(strcmp($1, "int32") != 0) type_error("REM", $1, "-");
+		else if(strcmp($3, "int32") != 0) type_error("REM", $3, "-");
+		printf("REM\n"); 
+	}
 ;
 
 UnaryExpr
 	: PrimaryExpr { $$ = $1; }
-	| '+' UnaryExpr { printf("POS\n"); }
-	| '-' UnaryExpr { printf("NEG\n"); }
-	| '!' UnaryExpr { printf("NOT\n"); }
+	| '+' UnaryExpr { $$ = $2; printf("POS\n"); }
+	| '-' UnaryExpr { $$ = $2; printf("NEG\n"); }
+	| '!' UnaryExpr { $$ = $2; printf("NOT\n"); }
 ;
 
 PrimaryExpr
@@ -383,18 +398,25 @@ static void dump_symbol()
 	tables->head = newHead;
 }
 
-static void printAll()
+static void type_error(char *operator, char *typeA, char *typeB)
 {
-	struct Table *table = tables->head;
-	while(table)
-	{
-		struct Symbol *symbol = table->head;
-		while(symbol)
-		{
-			printf("%-10d%-10s%-10s%-10d%-10d%s\n",
-            	symbol->index, symbol->name, symbol->type, symbol->address, symbol->lineno, symbol->element_type);
-				symbol = symbol->next;
-		}
-		table = table->next;
-	}
-}
+	if(
+		strcmp(operator, "ADD") == 0 ||
+		strcmp(operator, "SUB") == 0 ||
+		strcmp(operator, "ASSIGN") == 0
+	)
+		printf("error:%d: invalid operation: %s (mismatched types %s and %s)\n", yylineno, operator, typeA, typeB);
+
+	else if(
+		strcmp(operator, "REM") == 0 ||
+		strcmp(operator, "LAND") == 0 ||
+		strcmp(operator, "LOR") == 0
+	)
+		printf("error:%d: invalid operation: (operator %s not defined on %s)\n", yylineno, operator, typeA);
+
+	else if(
+		strcmp(operator, "CONDITION") == 0
+	)
+		printf("error:%d: non-bool (type %s) used as for condition\n", yylineno + 1, typeA);
+};
+

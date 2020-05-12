@@ -19,22 +19,17 @@
 	int isArray = 0;
 	int assignable = 1;
 	int assignable_result = 1;
-	struct Table_List *tables = NULL;
-		
-	//tables.head = tables->tail = malloc(sizeof(struct Table));
-	//(tables.head)->head = (tables.head)->tail = NULL;
+	struct Table_List *tables = NULL;	
 
     /* Symbol table function - you can add new function if needed. */
     static void create_symbol();
     static void insert_symbol();
     static char *lookup_symbol();
     static void dump_symbol();
-
 	static void type_error();
 %}
 
 %error-verbose
-
 %left LOR
 %left LAND
 %left EQL NEQ GEQ LEQ '>' '<'
@@ -72,8 +67,7 @@
 /* Nonterminal with return, which need to sepcify type */
 %type <type> Type TypeName ArrayType
 %type <operation> assign_op
-%type <type> Expression
-%type <type> Literal Operand UnaryExpr PrimaryExpr
+%type <type> Literal Operand UnaryExpr PrimaryExpr IndexExpr ConversionExpr Expression
 %type <scope> DeclarationStmt
 
 /* Yacc will start at this nonterminal */
@@ -145,10 +139,15 @@ PostStmt
 ;
 
 Condition
-	: Expression { if(strcmp($1, "bool") != 0) type_error("CONDITION", $1, "-"); }
+	: Expression { 
+		if(strcmp($1, "bool") != 0) 
+			type_error("CONDITION", $1, "-"); 
+	}
 ;
 
-ExpressionStmt : Expression ;
+ExpressionStmt
+	: Expression 
+;
 
 IncDecStmt
 	: Expression INC { printf("INC\n"); }
@@ -157,8 +156,10 @@ IncDecStmt
 
 AssignStmt
 	: Expression assign_op Expression {
-		if(assignable_result == 0) printf("error:%d: cannot assign to %s\n", yylineno, $1);
-		if(strcmp($1, $3) != 0) type_error($2, $1, $3); 
+		if(assignable_result == 0) 
+			printf("error:%d: cannot assign to %s\n", yylineno, $1);
+		if(strcmp($1, $3) != 0) 
+			type_error($2, $1, $3); 
 		printf("%s\n", $2); 
 		assignable = 1;
 	}
@@ -167,15 +168,19 @@ AssignStmt
 Expression
 	: UnaryExpr	{ $$ = $1; }
 	| Expression LOR Expression 	{ 
-		if(strcmp($1, "bool") != 0) type_error("LOR", $1, "-");
-		else if(strcmp($3, "bool") != 0) type_error("LOR", $3, "-");
+		if(strcmp($1, "bool") != 0) 
+			type_error("LOR", $1, "-");
+		else if(strcmp($3, "bool") != 0) 
+			type_error("LOR", $3, "-");
 		printf("LOR\n");
 		$$ = "bool";
 		assignable = 0; 
 	}
 	| Expression LAND Expression 	{ 
-		if(strcmp($1, "bool") != 0) type_error("LAND", $1, "-");
-		else if(strcmp($3, "bool") != 0) type_error("LAND", $3, "-");
+		if(strcmp($1, "bool") != 0) 
+			type_error("LAND", $1, "-");
+		else if(strcmp($3, "bool") != 0) 
+			type_error("LAND", $3, "-");
 		printf("LAND\n"); 
 		$$ = "bool"; 
 		assignable = 0; 
@@ -191,8 +196,10 @@ Expression
 	| Expression '*' Expression 	{ printf("MUL\n"); assignable = 0; }
 	| Expression '/' Expression 	{ printf("QUO\n"); assignable = 0; }
 	| Expression '%' Expression 	{ 
-		if(strcmp($1, "int32") != 0) type_error("REM", $1, "-");
-		else if(strcmp($3, "int32") != 0) type_error("REM", $3, "-");
+		if(strcmp($1, "int32") != 0) 
+			type_error("REM", $1, "-");
+		else if(strcmp($3, "int32") != 0) 
+			type_error("REM", $3, "-");
 		printf("REM\n"); 
 		assignable = 0; 
 	}
@@ -206,9 +213,9 @@ UnaryExpr
 ;
 
 PrimaryExpr
-	: Operand { $$ = $1; }
-	| IndexExpr
-	| ConversionExpr
+	: Operand 			{ $$ = $1; }
+	| IndexExpr 		{ $$ = $1; }
+	| ConversionExpr 	{ $$ = $1; }
 ;
 
 Operand
@@ -217,7 +224,7 @@ Operand
 	| '(' Expression ')' { $$ = $2; }
 ;
 
-IndexExpr : PrimaryExpr '[' Expression ']' { assignable = 1; };
+IndexExpr : PrimaryExpr '[' Expression ']' { $$ = $1; assignable = 1; };
 
 ConversionExpr
 	: Type '(' Expression ')' { 
@@ -225,6 +232,7 @@ ConversionExpr
 			printf("I to F\n");
 		else if((strcmp($1, "int32") == 0) && (strcmp($3, "float32") == 0))
 			printf("F to I\n");
+		$$ = $1;
 	}
 ;
 

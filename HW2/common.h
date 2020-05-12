@@ -7,7 +7,6 @@
 
 typedef enum { false, true } bool;
 
-/* struct ... */
 struct Symbol
 {
 	int index;
@@ -32,7 +31,5 @@ struct Table_List
 	struct Table *head;
 	struct Table *tail;
 };
-
-
 
 #endif /* COMMON_H */

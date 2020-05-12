@@ -18,6 +18,7 @@ fnumber ({digit}*\.{digit}+)
 %x CMT
 %x STR
 %option yylineno
+%option nounput
 
 /* Rules section */
 %%

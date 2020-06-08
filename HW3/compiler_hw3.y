@@ -27,6 +27,7 @@
 	int array_index = 0;
 	int variable_count = 0;
 	char assign_op = '\0';
+	int has_error = 0;
 
 	struct Stack *if_for_stack = NULL;
 	struct Stack *else_stack = NULL;
@@ -689,6 +690,10 @@ int main(int argc, char *argv[])
 
     fclose(yyin);
 	fclose(fp);
+
+	if(has_error)
+		remove("hw3.j");
+
     return 0;
 }
 
@@ -723,6 +728,7 @@ static void insert_symbol(char *id, char *type) {
 		if(strcmp(id, symbol->name) == 0)
 		{
 			printf("error:%d: %s redeclared in this block. previous declaration at line %d\n", yylineno, id, symbol->lineno);
+			has_error = 1;
 			return;
 		}
 		symbol = symbol->next;
@@ -785,6 +791,7 @@ static char* lookup_symbol(char* id)
 		table = table->next;
 	}
 	printf("error:%d: undefined: %s\n", yylineno + 1, id);
+	has_error = 1;
 	return "none";
 }
 
@@ -811,6 +818,7 @@ static char* lookup_symbol_type(char* id)
 		table = table->next;
 	}
 	printf("error:%d: undefined: %s\n", yylineno + 1, id);
+	has_error = 1;
 	return "none";
 }
 
@@ -838,6 +846,7 @@ static int lookup_symbol_addr(char* id)
 		table = table->next;
 	}
 	printf("error:%d: undefined: %s\n", yylineno + 1, id);
+	has_error = 1;
 	return 0;
 }
 
@@ -893,19 +902,28 @@ static void type_error(char *operator, char *typeA, char *typeB)
 		strcmp(operator, "SUB") == 0 ||
 		strcmp(operator, "ASSIGN") == 0
 	)
+	{
 		printf("error:%d: invalid operation: %s (mismatched types %s and %s)\n", yylineno, operator, typeA, typeB);
+		has_error = 1;
+	}
 
 	else if(
 		strcmp(operator, "REM") == 0 ||
 		strcmp(operator, "LAND") == 0 ||
 		strcmp(operator, "LOR") == 0
 	)
+	{
 		printf("error:%d: invalid operation: (operator %s not defined on %s)\n", yylineno, operator, typeA);
+		has_error = 1;
+	}
 
 	else if(
 		strcmp(operator, "CONDITION") == 0
 	)
+	{
 		printf("error:%d: non-bool (type %s) used as for condition\n", yylineno + 1, typeA);
+		has_error = 1;
+	}
 };
 
 struct Stack_Return pop_stack(struct Stack *stack)

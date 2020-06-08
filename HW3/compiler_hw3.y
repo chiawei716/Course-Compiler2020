@@ -284,20 +284,34 @@ ELSE_token
 	: ELSE {
 		struct Stack *temp = if_for_stack->last;
 		struct Stack_Return result = pop_stack(if_for_stack); 
-		if(result.isIf)
-		{			
-			fprintf(fp, "\tgoto else_label_%d\n", else_label_count);
-			fprintf(fp, "if_label_%d:\n\n", result.number);		
-			else_stack = push_stack(else_stack, else_label_count, 0, 0);
-			else_label_count++;
-		}
+		fprintf(fp, "\tgoto else_label_%d\n", else_label_count);
+		fprintf(fp, "if_label_%d:\n\n", result.number);		
+		else_stack = push_stack(else_stack, else_label_count, 0, 0);
+		else_label_count++;
 		if_for_stack = temp;
 	}
 ;
 
 ForStmt
-	: FOR Condition Block
-	| FOR ForClause Block
+	: FOR_token Condition Block {
+		struct Stack *temp = if_for_stack->last;
+		struct Stack_Return result_if = pop_stack(if_for_stack);
+		if_for_stack = temp;
+		temp = if_for_stack->last;
+		struct Stack_Return result_for = pop_stack(if_for_stack);
+		if_for_stack = temp;
+		fprintf(fp, "\tgoto for_label_%d\n", result_for.number);
+		fprintf(fp, "if_label_%d:\n", result_if.number);
+	}
+	| FOR_token ForClause Block
+;
+
+FOR_token
+	: FOR {
+		fprintf(fp, "for_label_%d:\n", for_label_count);
+		if_for_stack = push_stack(if_for_stack, for_label_count, 0, 1);
+		for_label_count ++;
+	}
 ;
 
 ForClause

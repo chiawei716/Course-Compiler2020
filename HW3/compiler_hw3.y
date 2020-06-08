@@ -26,6 +26,7 @@
 	int label_count = 0;
 	int array_index = 0;
 	int variable_count = 0;
+	char assign_op = '\0';
 
     /* Symbol table function - you can add new function if needed. */
     static void create_symbol();
@@ -126,9 +127,15 @@ DeclarationStmt
 			fprintf(fp, "\t%cstore %d\n", $3[0], addr);
 		}
 		else if($3[0] == 'b')
+		{
+			fprintf(fp, "\ticonst_0\n");
 			fprintf(fp, "\tistore %d\n", addr);
+		}
 		else if($3[0] == 's')
+		{
+			fprintf(fp, "\tldc \"\"\n");
 			fprintf(fp, "\tastore %d\n", addr);
+		}
 		isArray = 0;
 		variable_count = 1;
 	}
@@ -298,10 +305,23 @@ AssignStmt
 			type_error($2, $1, $3); 
 		printf("%s\n", $2); 
 		assignable = 1;
+		switch(assign_op)
+		{
+			case 'a': { fprintf(fp, "\t%cadd\n", $1[0]); break; }
+			case 's': { fprintf(fp, "\t%csub\n", $1[0]); break; }
+			case 'm': { fprintf(fp, "\t%cmul\n", $1[0]); break; }
+			case 'd': { fprintf(fp, "\t%cdiv\n", $1[0]); break; }
+			case 'r': { fprintf(fp, "\t%crem\n", $1[0]); break; }
+			default: break;
+		}
 		if(isArray)
 			fprintf(fp, "\t%castore\n", $1[0]);
 		else if($1[0] == 'i' || $1[0] == 'f')
-			fprintf(fp, "\t%cstore\n", $1[0]);
+			fprintf(fp, "\t%cstore %d\n", $1[0], current_addr);
+		else if($1[0] == 's')
+			fprintf(fp, "\tastore %d\n", current_addr);
+		else if($1[0] == 'b')
+			fprintf(fp, "\tistore %d\n", current_addr);
 		variable_count = 0;
 	}
 ;
@@ -444,12 +464,12 @@ Literal
 ;
 
 assign_op
-	: '='			{ $$ = "ASSIGN"; assignable_result = assignable; }
-	| ADD_ASSIGN 	{ $$ = "ADD_ASSIGN"; assignable_result = assignable; }
-	| SUB_ASSIGN	{ $$ = "SUB_ASSIGN"; assignable_result = assignable; }
-	| MUL_ASSIGN	{ $$ = "MUL_ASSIGN"; assignable_result = assignable; }
-	| QUO_ASSIGN	{ $$ = "QUO_ASSIGN"; assignable_result = assignable; }
-	| REM_ASSIGN	{ $$ = "REM_ASSIGN"; assignable_result = assignable; }
+	: '='			{ $$ = "ASSIGN"; assignable_result = assignable; assign_op = '\0';}
+	| ADD_ASSIGN 	{ $$ = "ADD_ASSIGN"; assignable_result = assignable; assign_op = 'a';}
+	| SUB_ASSIGN	{ $$ = "SUB_ASSIGN"; assignable_result = assignable; assign_op = 's';}
+	| MUL_ASSIGN	{ $$ = "MUL_ASSIGN"; assignable_result = assignable; assign_op = 'm';}
+	| QUO_ASSIGN	{ $$ = "QUO_ASSIGN"; assignable_result = assignable; assign_op = 'd';}
+	| REM_ASSIGN	{ $$ = "REM_ASSIGN"; assignable_result = assignable; assign_op = 'r';}
 ;
 
 Type

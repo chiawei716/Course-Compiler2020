@@ -18,6 +18,7 @@ fnumber ({digit}*\.{digit}+)
 %x CMT
 %x STR
 %option yylineno
+%option nounput
 
 /* Rules section */
 %%
@@ -83,15 +84,13 @@ fnumber ({digit}*\.{digit}+)
 "float32"   { return FLOAT;}
 "string"    { return STRING; }
 "bool"      { return BOOL; }
-"true"      { XXX; }
-"false"     { XXX; }
+"true"      { yylval.b_val = strdup("TRUE"); return BOOL_LIT; }
+"false"     { yylval.b_val = strdup("FALSE"); return BOOL_LIT; }
 "var"       { return VAR; }
 
-{inumber}   { yylval.i_val = atoi(yytext);
-                return INT_LIT;
-            }
-{fnumber}   { XXX; }
-{id}        { XXX; }
+{inumber}   { yylval.i_val = atoi(yytext); return INT_LIT; }
+{fnumber}   { yylval.f_val = atof(yytext); return FLOAT_LIT; }
+{id}        { yylval.s_val = strdup(yytext); return IDENTIFIER; }
 
 <<EOF>>     { static int once = 0;
                 if (once++) {

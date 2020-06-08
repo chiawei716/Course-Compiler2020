@@ -28,6 +28,12 @@
 	int variable_count = 0;
 	char assign_op = '\0';
 
+	struct Stack *if_for_stack = NULL;
+	struct Stack *else_stack = NULL;
+	int if_label_count = 0;
+	int for_label_count = 0;
+	int else_label_count = 0;
+
     /* Symbol table function - you can add new function if needed. */
     static void create_symbol();
     static void insert_symbol();
@@ -36,6 +42,8 @@
 	static int lookup_symbol_addr();
     static void dump_symbol();
 	static void type_error();
+	static struct Stack_Return pop_stack();
+	static struct Stack *push_stack();
 %}
 
 %error-verbose
@@ -242,13 +250,49 @@ PrintStmt
 ;
 
 Block
-	: BRACE_UP StatementList BRACE_DOWN { dump_symbol(); scope--; }
+	: BRACE_UP StatementList BRACE_DOWN {
+		dump_symbol();
+		scope--;	
+	}
 ;
 
 IfStmt
-	: IF Condition Block 
-	| IF Condition Block ELSE IfStmt
-	| IF Condition Block ELSE Block
+	: IF Condition Block {
+		struct Stack *temp = if_for_stack->last;
+		struct Stack_Return result = pop_stack(if_for_stack); 
+		if(result.isIf)
+		{			
+			fprintf(fp, "if_label_%d:\n\n", result.number);		
+		}
+		if_for_stack = temp;	
+	}
+	| IF Condition Block ELSE_token IfStmt {
+		struct Stack *temp = else_stack->last;
+		struct Stack_Return result = pop_stack(else_stack);
+		else_stack = temp;
+		fprintf(fp, "else_label_%d:\n\n", result.number);
+	}
+	| IF Condition Block ELSE_token Block {
+		struct Stack *temp = else_stack->last;
+		struct Stack_Return result = pop_stack(else_stack);
+		else_stack = temp;
+		fprintf(fp, "else_label_%d:\n\n", result.number);
+	}
+;
+
+ELSE_token
+	: ELSE {
+		struct Stack *temp = if_for_stack->last;
+		struct Stack_Return result = pop_stack(if_for_stack); 
+		if(result.isIf)
+		{			
+			fprintf(fp, "\tgoto else_label_%d\n", else_label_count);
+			fprintf(fp, "if_label_%d:\n\n", result.number);		
+			else_stack = push_stack(else_stack, else_label_count, 0, 0);
+			else_label_count++;
+		}
+		if_for_stack = temp;
+	}
 ;
 
 ForStmt
@@ -273,6 +317,9 @@ Condition
 		if(strcmp($1, "bool") != 0) 
 			type_error("CONDITION", $1, "-"); 
 		variable_count = 0;
+		fprintf(fp, "\tifeq if_label_%d\n", if_label_count);
+		if_for_stack = push_stack(if_for_stack, if_label_count, 1, 0);
+		if_label_count++;
 	}
 ;
 
@@ -348,10 +395,69 @@ Expression
 		assignable = 0;
 		fprintf(fp, "\tiand\n");
 	}
-	| Expression EQL Expression 	{ printf("EQL\n"); $$ = "bool"; assignable = 0; }
-	| Expression NEQ Expression 	{ printf("NEQ\n"); $$ = "bool"; assignable = 0; }
-	| Expression GEQ Expression 	{ printf("GEQ\n"); $$ = "bool"; assignable = 0; }
-	| Expression LEQ Expression 	{ printf("LEQ\n"); $$ = "bool"; assignable = 0; }
+	| Expression EQL Expression 	{ 
+		printf("EQL\n"); 
+		$$ = "bool"; 
+		assignable = 0; 
+		fprintf(fp, "\t%csub\n", $1[0]);
+		if($1[0] == 'f') fprintf(fp, "\tf2i\n");
+		fprintf(fp, "\tifeq label_%d\n", label_count);
+		fprintf(fp, "\ticonst_0\n");
+		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+		fprintf(fp, "label_%d:\n", label_count);
+		fprintf(fp, "\ticonst_1\n");
+		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+		fprintf(fp, "label_%d:\n\n", label_count + 1);
+		label_count += 2;
+	}
+	| Expression NEQ Expression 	{ 
+		printf("NEQ\n");
+		$$ = "bool"; 
+		assignable = 0; 
+		fprintf(fp, "\t%csub\n", $1[0]);
+		if($1[0] == 'f') fprintf(fp, "\tf2i\n");
+		fprintf(fp, "\tifne label_%d\n", label_count);
+		fprintf(fp, "\ticonst_0\n");
+		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+		fprintf(fp, "label_%d:\n", label_count);
+		fprintf(fp, "\ticonst_1\n");
+		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+		fprintf(fp, "label_%d:\n\n", label_count + 1);
+		label_count += 2;
+
+	}
+	| Expression GEQ Expression 	{ 
+		printf("GEQ\n"); 
+		$$ = "bool"; 
+		assignable = 0; 
+		fprintf(fp, "\t%csub\n", $1[0]);
+		if($1[0] == 'f') fprintf(fp, "\tf2i\n");
+		fprintf(fp, "\tifge label_%d\n", label_count);
+		fprintf(fp, "\ticonst_0\n");
+		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+		fprintf(fp, "label_%d:\n", label_count);
+		fprintf(fp, "\ticonst_1\n");
+		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+		fprintf(fp, "label_%d:\n\n", label_count + 1);
+		label_count += 2;
+
+	}
+	| Expression LEQ Expression 	{ 
+		printf("LEQ\n"); 
+		$$ = "bool"; 
+		assignable = 0; 
+		fprintf(fp, "\t%csub\n", $1[0]);
+		if($1[0] == 'f') fprintf(fp, "\tf2i\n");
+		fprintf(fp, "\tifle label_%d\n", label_count);
+		fprintf(fp, "\ticonst_0\n");
+		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+		fprintf(fp, "label_%d:\n", label_count);
+		fprintf(fp, "\ticonst_1\n");
+		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+		fprintf(fp, "label_%d:\n\n", label_count + 1);
+		label_count += 2;
+
+	}
 	| Expression '>' Expression 	{ 
 		printf("GTR\n"); 
 		$$ = "bool"; 
@@ -367,7 +473,22 @@ Expression
 		fprintf(fp, "label_%d:\n\n", label_count + 1);
 		label_count += 2;
 	}
-	| Expression '<' Expression 	{ printf("LSS\n"); $$ = "bool"; assignable = 0; }
+	| Expression '<' Expression 	{ 
+		printf("LSS\n"); 
+		$$ = "bool"; 
+		assignable = 0; 
+		fprintf(fp, "\t%csub\n", $1[0]);
+		if($1[0] == 'f') fprintf(fp, "\tf2i\n");
+		fprintf(fp, "\tiflt label_%d\n", label_count);
+		fprintf(fp, "\ticonst_0\n");
+		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+		fprintf(fp, "label_%d:\n", label_count);
+		fprintf(fp, "\ticonst_1\n");
+		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+		fprintf(fp, "label_%d:\n\n", label_count + 1);
+		label_count += 2;
+
+	}
 	| Expression '+' Expression 	{ 
 		if(strcmp($1, $3) != 0) type_error("ADD", $1, $3); 
 		printf("ADD\n"); 
@@ -432,7 +553,9 @@ Operand
 			fprintf(fp, "\tiload %d\n", addr);		
 		else
 			fprintf(fp, "\taload %d\n", addr);
-		current_addr = addr;
+		if(variable_count == 0)
+			current_addr = addr;
+		variable_count++;
 	}
 	| '(' Expression ')' { $$ = $2; }
 ;
@@ -440,7 +563,7 @@ Operand
 IndexExpr : PrimaryExpr '[' Expression ']' { 
 		$$ = $1; 
 		assignable = 1;
-		if(variable_count >= 1)
+		if(variable_count >= 2)
 			fprintf(fp, "\t%caload\n", $1[0]); 
 		variable_count++;
 	}
@@ -449,9 +572,15 @@ IndexExpr : PrimaryExpr '[' Expression ']' {
 ConversionExpr
 	: Type '(' Expression ')' { 
 		if((strcmp($1, "float32") == 0) && (strcmp($3, "int32") == 0)) 
+		{
 			printf("I to F\n");
+			fprintf(fp, "\ti2f\n");
+		}
 		else if((strcmp($1, "int32") == 0) && (strcmp($3, "float32") == 0))
+		{
 			printf("F to I\n");
+			fprintf(fp, "\tf2i\n");
+		}
 		$$ = $1;
 	}
 ;
@@ -514,12 +643,23 @@ int main(int argc, char *argv[])
 	fprintf(fp, ".limit stack 100 ; Define your storage size.\n");
 	fprintf(fp, ".limit locals 100 ; Define your local space number.\n");
 
-
 	tables = malloc(sizeof(struct Table_List));
 	tables->head = tables->tail = NULL;
 	create_symbol();
 
-    yylineno = 0;
+	if_for_stack = malloc(sizeof(struct Stack));
+	if_for_stack->last = NULL;
+	if_for_stack->isFor = 0;
+	if_for_stack->isIf = 0;
+	if_for_stack->number = 0;
+
+	else_stack = malloc(sizeof(struct Stack));
+	else_stack->last = NULL;
+	else_stack->isFor = 0;
+	else_stack->isIf = 0;
+	else_stack->number = 0;
+
+	yylineno = 0;
     yyparse();
 
 	dump_symbol();
@@ -528,6 +668,10 @@ int main(int argc, char *argv[])
 
 	fprintf(fp, "\treturn\n");
 	fprintf(fp, ".end method");
+
+	free(tables);
+	free(if_for_stack);
+	free(else_stack);
 
     fclose(yyin);
 	fclose(fp);
@@ -539,6 +683,9 @@ static void create_symbol()
 	// Create table
 	struct Table *newTable = malloc(sizeof(struct Table));
 	newTable->scope = scope;
+	newTable->head = NULL;
+	newTable->tail = NULL;
+	newTable->next = NULL;
 
 	if(tables->head)
 	{
@@ -747,3 +894,33 @@ static void type_error(char *operator, char *typeA, char *typeB)
 		printf("error:%d: non-bool (type %s) used as for condition\n", yylineno + 1, typeA);
 };
 
+struct Stack_Return pop_stack(struct Stack *stack)
+{
+	struct Stack_Return result;
+	result.isIf = 0;
+	result.isFor = 0;
+	result.number = 0;
+
+	if(stack->last != NULL)
+	{
+		result.isIf = stack->isIf;
+		result.isFor = stack->isFor;
+		result.number = stack->number;
+		struct Stack *temp = stack;
+		stack = stack->last;
+		free(temp);
+		return result;
+	}
+	else 
+		return result;
+}
+
+struct Stack* push_stack(struct Stack *stack, int number, int isIf, int isFor)
+{
+	struct Stack *newElement = malloc(sizeof(struct Stack));
+	newElement->number = number;
+	newElement->last = stack;
+	newElement->isIf = isIf;
+	newElement->isFor = isFor;
+	return newElement;
+}

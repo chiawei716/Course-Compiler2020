@@ -33,4 +33,19 @@ struct Table_List
 	struct Table *tail;
 };
 
+struct Stack
+{
+	int number;
+	int isIf;
+	int isFor;
+	struct Stack *last;
+};
+
+struct Stack_Return
+{
+	int isIf;
+	int isFor;
+	int number;
+};
+
 #endif /* COMMON_H */

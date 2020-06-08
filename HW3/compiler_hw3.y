@@ -34,6 +34,7 @@
 	int if_label_count = 0;
 	int for_label_count = 0;
 	int else_label_count = 0;
+	int forClause = 0;
 
     /* Symbol table function - you can add new function if needed. */
     static void create_symbol();
@@ -99,8 +100,8 @@ Program
 ;
 
 StatementList
-    : StatementList Statement { variable_count = 0; }
-    | Statement { variable_count = 0; }
+    : StatementList Statement { variable_count = 0; isArray = 0;}
+    | Statement { variable_count = 0; isArray = 0;}
 ;
 
 Statement
@@ -176,11 +177,10 @@ SimpleStmt
 ;
 
 PrintStmt
-	: PRINT '(' Expression ')' { 
+	: PRINT_token '(' Expression ')' { 
 		printf("PRINT %s\n", $3);
 		if(isArray)
 		{
-			fprintf(fp, "\t%caload\n", $3[0]);
 			fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
 			fprintf(fp, "\tswap\n");
 			fprintf(fp, "\tinvokevirtual java/io/PrintStream/print(%c)V\n\n", toupper($3[0]));
@@ -212,11 +212,10 @@ PrintStmt
 			fprintf(fp, "\tinvokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n\n");
 		}
 	}
-	| PRINTLN '(' Expression ')' { 
+	| PRINTLN_token '(' Expression ')' { 
 		printf("PRINTLN %s\n", $3); 		
 		if(isArray)
 		{
-			fprintf(fp, "\t%caload\n", $3[0]);
 			fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
 			fprintf(fp, "\tswap\n");
 			fprintf(fp, "\tinvokevirtual java/io/PrintStream/println(%c)V\n\n", toupper($3[0]));
@@ -248,6 +247,14 @@ PrintStmt
 			fprintf(fp, "\tinvokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n\n");
 		}
 	}
+;
+
+PRINT_token
+	: PRINT {variable_count = 2;}
+;
+
+PRINTLN_token
+	: PRINTLN {variable_count = 2; }
 ;
 
 Block
@@ -260,11 +267,8 @@ Block
 IfStmt
 	: IF Condition Block {
 		struct Stack *temp = if_for_stack->last;
-		struct Stack_Return result = pop_stack(if_for_stack); 
-		if(result.isIf)
-		{			
-			fprintf(fp, "if_label_%d:\n\n", result.number);		
-		}
+		struct Stack_Return result = pop_stack(if_for_stack);
+		fprintf(fp, "if_label_%d:\n\n", result.number);		
 		if_for_stack = temp;	
 	}
 	| IF Condition Block ELSE_token IfStmt {
@@ -304,27 +308,48 @@ ForStmt
 		fprintf(fp, "\tgoto for_label_%d\n", result_for.number);
 		fprintf(fp, "if_label_%d:\n", result_if.number);
 	}
-	| FOR_token ForClause Block
+	| FOR_token ForClause Block {
+		struct Stack *temp = if_for_stack->last;
+		struct Stack_Return result_for = pop_stack(if_for_stack);
+		if_for_stack = temp;
+		temp = if_for_stack->last;
+		struct Stack_Return result_if = pop_stack(if_for_stack);
+		if_for_stack = temp;
+		fprintf(fp, "\tgoto for_label_%d\n", result_for.number);
+		fprintf(fp, "if_label_%d:\n", result_if.number);
+	}
 ;
 
 FOR_token
 	: FOR {
 		fprintf(fp, "for_label_%d:\n", for_label_count);
 		if_for_stack = push_stack(if_for_stack, for_label_count, 0, 1);
-		for_label_count ++;
+		for_label_count++;
 	}
 ;
 
 ForClause
-	: InitStmt ';' Condition ';' PostStmt
+	: InitStmt ';' Condition ';' PostStmt {
+		forClause = 0;
+	}
 ;
 
 InitStmt
-	: SimpleStmt
+	: SimpleStmt {
+		struct Stack *temp = if_for_stack->last;
+		pop_stack(if_for_stack);
+		if_for_stack = temp;
+		fprintf(fp, "for_label_%d:\n", for_label_count);		
+		forClause = 1;
+	}
 ;
 
 PostStmt
-	: SimpleStmt
+	: SimpleStmt {
+		fprintf(fp, "\tgoto for_label_%d\n", for_label_count);
+		fprintf(fp, "for_label_%d:\n", for_label_count + 2);	
+		for_label_count += 3;
+	}
 ;
 
 Condition
@@ -332,9 +357,21 @@ Condition
 		if(strcmp($1, "bool") != 0) 
 			type_error("CONDITION", $1, "-"); 
 		variable_count = 0;
-		fprintf(fp, "\tifeq if_label_%d\n", if_label_count);
-		if_for_stack = push_stack(if_for_stack, if_label_count, 1, 0);
-		if_label_count++;
+		if(forClause)
+		{
+			fprintf(fp, "\tifeq if_label_%d\n", if_label_count);
+			if_for_stack = push_stack(if_for_stack, if_label_count, 1, 0);
+			if_label_count++;
+			fprintf(fp, "\tgoto for_label_%d\n", for_label_count + 2);
+			fprintf(fp, "for_label_%d:\n", for_label_count + 1);
+			if_for_stack = push_stack(if_for_stack, for_label_count + 1, 0, 1);
+		}
+		else
+		{
+			fprintf(fp, "\tifeq if_label_%d\n", if_label_count);
+			if_for_stack = push_stack(if_for_stack, if_label_count, 1, 0);
+			if_label_count++;
+		}
 	}
 ;
 

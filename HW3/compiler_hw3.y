@@ -16,21 +16,31 @@
     }
 
 	/* Symbol table variables */
+
+	// yacc variables
 	int scope = 0;
 	int address = 0;
 	int isArray = 0;
 	int assignable = 1;
 	int assignable_result = 1;
+	
+	// Storage of variables
 	struct Table_List *tables = NULL;	
 	int current_addr = 0;
 	int label_count = 0;
-	int array_index = 0;
-	int variable_count = 0;
-	char assign_op = '\0';
+	
+
+	// Detect if error exists
 	int has_error = 0;
 
+	int variable_count = 0;
+	char assign_op = '\0';
+
+	// Stack of if/for & else statement
 	struct Stack *if_for_stack = NULL;
 	struct Stack *else_stack = NULL;
+
+	// Count for if/for/else labels
 	int if_label_count = 0;
 	int for_label_count = 0;
 	int else_label_count = 0;
@@ -44,7 +54,7 @@
 	static int lookup_symbol_addr();
     static void dump_symbol();
 	static void type_error();
-	static struct Stack_Return pop_stack();
+	static int pop_stack();
 	static struct Stack *push_stack();
 %}
 
@@ -100,8 +110,14 @@ Program
 ;
 
 StatementList
-    : StatementList Statement { variable_count = 0; isArray = 0;}
-    | Statement { variable_count = 0; isArray = 0;}
+    : StatementList Statement { 
+		variable_count = 0; 
+		isArray = 0;
+	}
+    | Statement { 
+		variable_count = 0; 
+		isArray = 0;
+	}
 ;
 
 Statement
@@ -118,40 +134,46 @@ DeclarationStmt
 	: VAR IDENTIFIER Type {
 		insert_symbol($2, $3);
 		int addr = lookup_symbol_addr($2);
+
+		// array
 		if(isArray)
 		{
 			char type[10];
 			if($3[0] == 'i') strcpy(type, "int");
 			else if($3[0] == 'f') strcpy(type, "float");
-			fprintf(fp, "\tnewarray %s\n", type);
-			fprintf(fp, "\tastore %d\n", addr);
+			fprintf(fp, "\tnewarray %s\n", type);	// create array
+			fprintf(fp, "\tastore %d\n", addr);		// store array
 		}
-		else if($3[0] == 'i')
+		else
 		{
-			fprintf(fp, "\tldc 0\n");
-			fprintf(fp, "\t%cstore %d\n", $3[0], addr);
+			switch($3[0])
+			{
+				case 'i':
+					fprintf(fp, "\tldc 0\n");		// default 0
+					fprintf(fp, "\t%cstore %d\n", $3[0], addr);
+					break;
+				case 'f':
+					fprintf(fp, "\tldc 0.0\n");		// default 0.0
+					fprintf(fp, "\t%cstore %d\n", $3[0], addr);
+					break;
+				case 'b':
+					fprintf(fp, "\ticonst_0\n");	// default false
+					fprintf(fp, "\tistore %d\n", addr);
+					break;
+				case 's':
+					fprintf(fp, "\tldc \"\"\n");	// default ""
+					fprintf(fp, "\tastore %d\n", addr);
+					break;
+				default: ;
+			}
 		}
-		else if($3[0] == 'f')
-		{
-			fprintf(fp, "\tldc 0.0\n");
-			fprintf(fp, "\t%cstore %d\n", $3[0], addr);
-		}
-		else if($3[0] == 'b')
-		{
-			fprintf(fp, "\ticonst_0\n");
-			fprintf(fp, "\tistore %d\n", addr);
-		}
-		else if($3[0] == 's')
-		{
-			fprintf(fp, "\tldc \"\"\n");
-			fprintf(fp, "\tastore %d\n", addr);
-		}
-		isArray = 0;
 		variable_count = 1;
 	}
 	| VAR IDENTIFIER Type '=' Expression { 
 		insert_symbol($2, $3); 
 		int addr = lookup_symbol_addr($2);
+
+		// array
 		if(isArray)
 		{
 			char type[10];
@@ -160,12 +182,23 @@ DeclarationStmt
 			fprintf(fp, "\tnewarray %s\n", type);
 			fprintf(fp, "\tastore %d\n", addr);
 		}
-		else if($3[0] == 'f' || $3[0] == 'i')
-			fprintf(fp, "\t%cstore %d\n", $3[0], addr);
-		else if($3[0] == 'b')
-			fprintf(fp, "\tistore %d\n", addr);		
 		else
-			fprintf(fp, "\tastore %d\n", addr);
+		{
+			switch($3[0])
+			{
+				case 'i':
+				case 'f':
+					fprintf(fp, "\t%cstore %d\n", $3[0], addr);
+					break;
+				case 'b':
+					fprintf(fp, "\tistore %d\n", addr);	
+					break;
+				case 's':
+					fprintf(fp, "\tastore %d\n", addr);
+					break;
+				default: ;
+			}
+		}
 		variable_count = 1;
 	}
 ;
@@ -179,82 +212,72 @@ SimpleStmt
 PrintStmt
 	: PRINT_token '(' Expression ')' { 
 		printf("PRINT %s\n", $3);
-		if(isArray)
+		switch($3[0])
 		{
-			fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
-			fprintf(fp, "\tswap\n");
-			fprintf(fp, "\tinvokevirtual java/io/PrintStream/print(%c)V\n\n", toupper($3[0]));
-		}
-		else if($3[0] == 'i' || $3[0] == 'f')
-		{
-			fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
-			fprintf(fp, "\tswap\n");
-			fprintf(fp, "\tinvokevirtual java/io/PrintStream/print(%c)V\n\n", toupper($3[0]));
-		}
-		else if($3[0] == 'b')
-		{			
-			fprintf(fp, "\tifne label_%d\n", label_count);
-			fprintf(fp, "\tldc \"false\"\n");
-			fprintf(fp, "\tgoto label_%d\n", label_count + 1);
-			fprintf(fp, "label_%d:\n", label_count);
-			fprintf(fp, "\tldc \"true\"\n");
-			fprintf(fp, "\tgoto label_%d\n", label_count + 1);
-			fprintf(fp, "label_%d:\n\n", label_count + 1);
-			fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
-			fprintf(fp, "\tswap\n");
-			fprintf(fp, "\tinvokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n\n");
-			label_count += 2;
-		}
-		else if($3[0] == 's')
-		{
-			fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
-			fprintf(fp, "\tswap\n");
-			fprintf(fp, "\tinvokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n\n");
+			case 'i':
+			case 'f':
+				fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
+				fprintf(fp, "\tswap\n");
+				fprintf(fp, "\tinvokevirtual java/io/PrintStream/print(%c)V\n\n", toupper($3[0]));
+				break;
+			case 'b':
+				fprintf(fp, "\tifne label_%d\n", label_count);
+				fprintf(fp, "\tldc \"false\"\n");
+				fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+				fprintf(fp, "label_%d:\n", label_count);
+				fprintf(fp, "\tldc \"true\"\n");
+				fprintf(fp, "label_%d:\n\n", label_count + 1);
+				fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
+				fprintf(fp, "\tswap\n");
+				fprintf(fp, "\tinvokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n\n");
+				label_count += 2;
+				break;
+			case 's':
+				fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
+				fprintf(fp, "\tswap\n");
+				fprintf(fp, "\tinvokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n\n");
+				break;
+			default: ;
 		}
 	}
 	| PRINTLN_token '(' Expression ')' { 
-		printf("PRINTLN %s\n", $3); 		
-		if(isArray)
+		printf("PRINTLN %s\n", $3); 
+		switch($3[0])
 		{
-			fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
-			fprintf(fp, "\tswap\n");
-			fprintf(fp, "\tinvokevirtual java/io/PrintStream/println(%c)V\n\n", toupper($3[0]));
-		}
-		else if($3[0] == 'i' || $3[0] == 'f')
-		{
-			fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
-			fprintf(fp, "\tswap\n");
-			fprintf(fp, "\tinvokevirtual java/io/PrintStream/println(%c)V\n\n", toupper($3[0]));
-		}
-		else if($3[0] == 'b')
-		{
-			fprintf(fp, "\tifne label_%d\n", label_count);
-			fprintf(fp, "\tldc \"false\"\n");
-			fprintf(fp, "\tgoto label_%d\n", label_count + 1);
-			fprintf(fp, "label_%d:\n", label_count);
-			fprintf(fp, "\tldc \"true\"\n");
-			fprintf(fp, "\tgoto label_%d\n", label_count + 1);
-			fprintf(fp, "label_%d:\n\n", label_count + 1);
-			fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
-			fprintf(fp, "\tswap\n");
-			fprintf(fp, "\tinvokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n\n");
-			label_count += 2;
-		}
-		else if($3[0] == 's')
-		{
-			fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
-			fprintf(fp, "\tswap\n");
-			fprintf(fp, "\tinvokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n\n");
+			case 'i':
+			case 'f':
+				fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
+				fprintf(fp, "\tswap\n");
+				fprintf(fp, "\tinvokevirtual java/io/PrintStream/println(%c)V\n\n", toupper($3[0]));
+				break;
+			case 'b':
+				fprintf(fp, "\tifne label_%d\n", label_count);
+				fprintf(fp, "\tldc \"false\"\n");
+				fprintf(fp, "\tgoto label_%d\n", label_count + 1);
+				fprintf(fp, "label_%d:\n", label_count);
+				fprintf(fp, "\tldc \"true\"\n");
+				fprintf(fp, "label_%d:\n\n", label_count + 1);
+				fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
+				fprintf(fp, "\tswap\n");
+				fprintf(fp, "\tinvokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n\n");
+				label_count += 2;
+				break;
+			case 's':
+				fprintf(fp, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
+				fprintf(fp, "\tswap\n");
+				fprintf(fp, "\tinvokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n\n");
+				break;
+			default: ;
 		}
 	}
 ;
 
 PRINT_token
-	: PRINT {variable_count = 2;}
+	: PRINT { variable_count = 2;}
 ;
 
 PRINTLN_token
-	: PRINTLN {variable_count = 2; }
+	: PRINTLN { variable_count = 2; }
 ;
 
 Block
@@ -267,31 +290,31 @@ Block
 IfStmt
 	: IF Condition Block {
 		struct Stack *temp = if_for_stack->last;
-		struct Stack_Return result = pop_stack(if_for_stack);
-		fprintf(fp, "if_label_%d:\n\n", result.number);		
+		int result = pop_stack(if_for_stack);
+		fprintf(fp, "if_label_%d:\n\n", result);		
 		if_for_stack = temp;	
 	}
 	| IF Condition Block ELSE_token IfStmt {
 		struct Stack *temp = else_stack->last;
-		struct Stack_Return result = pop_stack(else_stack);
+		int result = pop_stack(else_stack);
 		else_stack = temp;
-		fprintf(fp, "else_label_%d:\n\n", result.number);
+		fprintf(fp, "else_label_%d:\n\n", result);
 	}
 	| IF Condition Block ELSE_token Block {
 		struct Stack *temp = else_stack->last;
-		struct Stack_Return result = pop_stack(else_stack);
+		int result = pop_stack(else_stack);
 		else_stack = temp;
-		fprintf(fp, "else_label_%d:\n\n", result.number);
+		fprintf(fp, "else_label_%d:\n\n", result);
 	}
 ;
 
 ELSE_token
 	: ELSE {
 		struct Stack *temp = if_for_stack->last;
-		struct Stack_Return result = pop_stack(if_for_stack); 
+		int result = pop_stack(if_for_stack); 
 		fprintf(fp, "\tgoto else_label_%d\n", else_label_count);
-		fprintf(fp, "if_label_%d:\n\n", result.number);		
-		else_stack = push_stack(else_stack, else_label_count, 0, 0);
+		fprintf(fp, "if_label_%d:\n\n", result);		
+		else_stack = push_stack(else_stack, else_label_count);
 		else_label_count++;
 		if_for_stack = temp;
 	}
@@ -300,30 +323,30 @@ ELSE_token
 ForStmt
 	: FOR_token Condition Block {
 		struct Stack *temp = if_for_stack->last;
-		struct Stack_Return result_if = pop_stack(if_for_stack);
+		int result_if = pop_stack(if_for_stack);
 		if_for_stack = temp;
 		temp = if_for_stack->last;
-		struct Stack_Return result_for = pop_stack(if_for_stack);
+		int result_for = pop_stack(if_for_stack);
 		if_for_stack = temp;
-		fprintf(fp, "\tgoto for_label_%d\n", result_for.number);
-		fprintf(fp, "if_label_%d:\n", result_if.number);
+		fprintf(fp, "\tgoto for_label_%d\n", result_for);
+		fprintf(fp, "if_label_%d:\n", result_if);
 	}
 	| FOR_token ForClause Block {
 		struct Stack *temp = if_for_stack->last;
-		struct Stack_Return result_for = pop_stack(if_for_stack);
+		int result_for = pop_stack(if_for_stack);
 		if_for_stack = temp;
 		temp = if_for_stack->last;
-		struct Stack_Return result_if = pop_stack(if_for_stack);
+		int result_if = pop_stack(if_for_stack);
 		if_for_stack = temp;
-		fprintf(fp, "\tgoto for_label_%d\n", result_for.number);
-		fprintf(fp, "if_label_%d:\n", result_if.number);
+		fprintf(fp, "\tgoto for_label_%d\n", result_for);
+		fprintf(fp, "if_label_%d:\n", result_if);
 	}
 ;
 
 FOR_token
 	: FOR {
 		fprintf(fp, "for_label_%d:\n", for_label_count);
-		if_for_stack = push_stack(if_for_stack, for_label_count, 0, 1);
+		if_for_stack = push_stack(if_for_stack, for_label_count);
 		for_label_count++;
 	}
 ;
@@ -360,16 +383,16 @@ Condition
 		if(forClause)
 		{
 			fprintf(fp, "\tifeq if_label_%d\n", if_label_count);
-			if_for_stack = push_stack(if_for_stack, if_label_count, 1, 0);
+			if_for_stack = push_stack(if_for_stack, if_label_count);
 			if_label_count++;
 			fprintf(fp, "\tgoto for_label_%d\n", for_label_count + 2);
 			fprintf(fp, "for_label_%d:\n", for_label_count + 1);
-			if_for_stack = push_stack(if_for_stack, for_label_count + 1, 0, 1);
+			if_for_stack = push_stack(if_for_stack, for_label_count + 1);
 		}
 		else
 		{
 			fprintf(fp, "\tifeq if_label_%d\n", if_label_count);
-			if_for_stack = push_stack(if_for_stack, if_label_count, 1, 0);
+			if_for_stack = push_stack(if_for_stack, if_label_count);
 			if_label_count++;
 		}
 	}
@@ -385,63 +408,75 @@ IncDecStmt
 		fprintf(fp, "\tldc 1%s\n", $1[0] == 'f' ? ".0" : "");
 		fprintf(fp, "\t%cadd\n", $1[0]);
 		fprintf(fp, "\t%cstore %d\n", $1[0], current_addr);
-		variable_count = 0;
 	}
 	| Expression DEC { 
 		printf("DEC\n");
 		fprintf(fp, "\tldc 1%s\n", $1[0] == 'f' ? ".0" : "");
 		fprintf(fp, "\t%csub\n", $1[0]);
 		fprintf(fp, "\t%cstore %d\n", $1[0], current_addr);
-		variable_count = 0;
 	}
 ;
 
 AssignStmt
 	: Expression assign_op Expression {
-		if(assignable_result == 0) 
-			printf("error:%d: cannot assign to %s\n", yylineno, $1);
-		if(strcmp($1, $3) != 0) 
-			type_error($2, $1, $3); 
+		if(assignable_result == 0) printf("error:%d: cannot assign to %s\n", yylineno, $1);
+		if(strcmp($1, $3) != 0) type_error($2, $1, $3); 
 		printf("%s\n", $2); 
 		assignable = 1;
 		switch(assign_op)
 		{
-			case 'a': { fprintf(fp, "\t%cadd\n", $1[0]); break; }
-			case 's': { fprintf(fp, "\t%csub\n", $1[0]); break; }
-			case 'm': { fprintf(fp, "\t%cmul\n", $1[0]); break; }
-			case 'd': { fprintf(fp, "\t%cdiv\n", $1[0]); break; }
-			case 'r': { fprintf(fp, "\t%crem\n", $1[0]); break; }
-			default: break;
+			case 'a': 
+				fprintf(fp, "\t%cadd\n", $1[0]); 
+				break;
+			case 's':
+				fprintf(fp, "\t%csub\n", $1[0]); 
+				break;
+			case 'm':
+				fprintf(fp, "\t%cmul\n", $1[0]);
+				break;
+			case 'd':
+				fprintf(fp, "\t%cdiv\n", $1[0]);
+				break;
+			case 'r': 
+				fprintf(fp, "\t%crem\n", $1[0]);
+				break;
+			default: ;
 		}
 		if(isArray)
 			fprintf(fp, "\t%castore\n", $1[0]);
-		else if($1[0] == 'i' || $1[0] == 'f')
-			fprintf(fp, "\t%cstore %d\n", $1[0], current_addr);
-		else if($1[0] == 's')
-			fprintf(fp, "\tastore %d\n", current_addr);
-		else if($1[0] == 'b')
-			fprintf(fp, "\tistore %d\n", current_addr);
-		variable_count = 0;
+		else
+		{
+			switch($1[0])
+			{
+				case 'i':
+				case 'f':
+					fprintf(fp, "\t%cstore %d\n", $1[0], current_addr);
+					break;
+				case 'b':
+					fprintf(fp, "\tistore %d\n", current_addr);
+					break;
+				case 's':
+					fprintf(fp, "\tastore %d\n", current_addr);
+					break;
+				default: ;
+			}
+		}
 	}
 ;
 
 Expression
 	: UnaryExpr	{ $$ = $1; }
 	| Expression LOR Expression 	{ 
-		if(strcmp($1, "bool") != 0) 
-			type_error("LOR", $1, "-");
-		else if(strcmp($3, "bool") != 0) 
-			type_error("LOR", $3, "-");
+		if(strcmp($1, "bool") != 0) type_error("LOR", $1, "-");
+		else if(strcmp($3, "bool") != 0) type_error("LOR", $3, "-");
 		printf("LOR\n");
 		$$ = "bool";
 		assignable = 0; 
 		fprintf(fp, "\tior\n");
 	}
 	| Expression LAND Expression 	{ 
-		if(strcmp($1, "bool") != 0) 
-			type_error("LAND", $1, "-");
-		else if(strcmp($3, "bool") != 0) 
-			type_error("LAND", $3, "-");
+		if(strcmp($1, "bool") != 0) type_error("LAND", $1, "-");
+		else if(strcmp($3, "bool") != 0) type_error("LAND", $3, "-");
 		printf("LAND\n"); 
 		$$ = "bool"; 
 		assignable = 0;
@@ -450,7 +485,7 @@ Expression
 	| Expression EQL Expression 	{ 
 		printf("EQL\n"); 
 		$$ = "bool"; 
-		assignable = 0; 
+		assignable = 0;
 		fprintf(fp, "\t%csub\n", $1[0]);
 		if($1[0] == 'f') fprintf(fp, "\tf2i\n");
 		fprintf(fp, "\tifeq label_%d\n", label_count);
@@ -492,7 +527,6 @@ Expression
 		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
 		fprintf(fp, "label_%d:\n\n", label_count + 1);
 		label_count += 2;
-
 	}
 	| Expression LEQ Expression 	{ 
 		printf("LEQ\n"); 
@@ -539,7 +573,6 @@ Expression
 		fprintf(fp, "\tgoto label_%d\n", label_count + 1);
 		fprintf(fp, "label_%d:\n\n", label_count + 1);
 		label_count += 2;
-
 	}
 	| Expression '+' Expression 	{ 
 		if(strcmp($1, $3) != 0) type_error("ADD", $1, $3); 
@@ -564,10 +597,8 @@ Expression
 		fprintf(fp, "\t%cdiv\n", $1[0]);
 	}
 	| Expression '%' Expression 	{ 
-		if(strcmp($1, "int32") != 0) 
-			type_error("REM", $1, "-");
-		else if(strcmp($3, "int32") != 0) 
-			type_error("REM", $3, "-");
+		if(strcmp($1, "int32") != 0) type_error("REM", $1, "-");
+		else if(strcmp($3, "int32") != 0) type_error("REM", $3, "-");
 		printf("REM\n"); 
 		assignable = 0; 
 		fprintf(fp, "\t%crem\n", $1[0]);
@@ -598,15 +629,23 @@ Operand
 		$$ = lookup_symbol($1);
 		int addr = lookup_symbol_addr($1);
 		assignable = 1; 
-		char* type = strdup(lookup_symbol_type($1));
-		if(type[0] == 'f' || type[0] == 'i')
-			fprintf(fp, "\t%cload %d\n", type[0], addr);
-		else if(type[0] == 'b')
-			fprintf(fp, "\tiload %d\n", addr);		
-		else
-			fprintf(fp, "\taload %d\n", addr);
-		if(variable_count == 0)
-			current_addr = addr;
+		char type = lookup_symbol_type($1)[0];
+		switch(type)
+		{
+			case 'i':
+			case 'f':
+				fprintf(fp, "\t%cload %d\n", type, addr);
+				break;
+			case 'b':
+				fprintf(fp, "\tiload %d\n", addr);
+				break;
+			case 's':
+			case 'a':
+				fprintf(fp, "\taload %d\n", addr);
+				break;
+			default: ;
+		}
+		if(variable_count == 0) current_addr = addr;	// store addr for assignment
 		variable_count++;
 	}
 	| '(' Expression ')' { $$ = $2; }
@@ -616,7 +655,7 @@ IndexExpr : PrimaryExpr '[' Expression ']' {
 		$$ = $1; 
 		assignable = 1;
 		if(variable_count >= 2)
-			fprintf(fp, "\t%caload\n", $1[0]); 
+			fprintf(fp, "\t%caload\n", $1[0]); 	// if variable_count >= 2, means it won't be on LHS of assign stmt
 		variable_count++;
 	}
 ;
@@ -638,7 +677,7 @@ ConversionExpr
 ;
 
 Literal
-	: INT_LIT 		{ array_index = $1; fprintf(fp, "\tldc %d\n", $1); printf("INT_LIT %d\n", $1); $$ = "int32"; }
+	: INT_LIT 		{ fprintf(fp, "\tldc %d\n", $1); printf("INT_LIT %d\n", $1); $$ = "int32"; }
 	| FLOAT_LIT 	{ fprintf(fp, "\tldc %f\n", $1); printf("FLOAT_LIT %f\n", $1); $$ = "float32"; }
 	| '"' STRING_LIT '"'	{ fprintf(fp, "\tldc \"%s\"\n", $2); printf("STRING_LIT %s\n", $2); $$ = "string"; }
 	| BOOL_LIT		{ fprintf(fp, "\ticonst_%d\n", strcmp($1, "TRUE") == 0 ? 1 : 0); printf("%s\n", $1); $$ = "bool"; } 
@@ -655,7 +694,7 @@ assign_op
 
 Type
 	: TypeName { $$ = $1; }
-	| ArrayType { $$ = $1; variable_count = 0;}
+	| ArrayType { $$ = $1; /*variable_count = 0;*/}
 ;
 
 TypeName
@@ -687,7 +726,10 @@ int main(int argc, char *argv[])
         yyin = stdin;
     }
 
+	// Open file
 	fp = fopen("hw3.j", "w");
+
+	// Add head
 	fprintf(fp, ".source hw3.j\n");
 	fprintf(fp, ".class public Main\n");
 	fprintf(fp, ".super java/lang/Object\n");
@@ -701,14 +743,10 @@ int main(int argc, char *argv[])
 
 	if_for_stack = malloc(sizeof(struct Stack));
 	if_for_stack->last = NULL;
-	if_for_stack->isFor = 0;
-	if_for_stack->isIf = 0;
 	if_for_stack->number = 0;
 
 	else_stack = malloc(sizeof(struct Stack));
 	else_stack->last = NULL;
-	else_stack->isFor = 0;
-	else_stack->isIf = 0;
 	else_stack->number = 0;
 
 	yylineno = 0;
@@ -728,6 +766,7 @@ int main(int argc, char *argv[])
     fclose(yyin);
 	fclose(fp);
 
+	// Error handle
 	if(has_error)
 		remove("hw3.j");
 
@@ -749,9 +788,7 @@ static void create_symbol()
 		tables->head = newTable;
 	}
 	else
-	{
 		tables->head = tables->tail = newTable;
-	}
 }
 
 static void insert_symbol(char *id, char *type) {
@@ -833,8 +870,7 @@ static char* lookup_symbol(char* id)
 }
 
 static char* lookup_symbol_type(char* id)
-{
-	
+{	
 	struct Table *table = tables->head;
 	while(table)
 	{
@@ -854,15 +890,11 @@ static char* lookup_symbol_type(char* id)
 		}
 		table = table->next;
 	}
-	printf("error:%d: undefined: %s\n", yylineno + 1, id);
-	has_error = 1;
 	return "none";
 }
 
-
 static int lookup_symbol_addr(char* id)
 {
-	
 	struct Table *table = tables->head;
 	while(table)
 	{
@@ -882,8 +914,6 @@ static int lookup_symbol_addr(char* id)
 		}
 		table = table->next;
 	}
-	printf("error:%d: undefined: %s\n", yylineno + 1, id);
-	has_error = 1;
 	return 0;
 }
 
@@ -963,18 +993,12 @@ static void type_error(char *operator, char *typeA, char *typeB)
 	}
 };
 
-struct Stack_Return pop_stack(struct Stack *stack)
+int pop_stack(struct Stack *stack)
 {
-	struct Stack_Return result;
-	result.isIf = 0;
-	result.isFor = 0;
-	result.number = 0;
-
+	int result = 0;
 	if(stack->last != NULL)
 	{
-		result.isIf = stack->isIf;
-		result.isFor = stack->isFor;
-		result.number = stack->number;
+		result = stack->number;
 		struct Stack *temp = stack;
 		stack = stack->last;
 		free(temp);
@@ -984,12 +1008,10 @@ struct Stack_Return pop_stack(struct Stack *stack)
 		return result;
 }
 
-struct Stack* push_stack(struct Stack *stack, int number, int isIf, int isFor)
+struct Stack* push_stack(struct Stack *stack, int number)
 {
 	struct Stack *newElement = malloc(sizeof(struct Stack));
 	newElement->number = number;
 	newElement->last = stack;
-	newElement->isIf = isIf;
-	newElement->isFor = isFor;
 	return newElement;
 }
